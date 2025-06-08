@@ -240,7 +240,7 @@ export class Renderer {
         const camera = scene.camera;
 
         // Sort objects by rendering order
-        const sortedObjects = this.sortObjects(scene.objects);
+        const sortedObjects = this.sortObjects(scene.getAllObjects());
 
         // Render each object
         for (const object of sortedObjects) {

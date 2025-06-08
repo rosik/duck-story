@@ -166,7 +166,7 @@ export class Scene {
      */
     setupStartCamera() {
         this.camera = new Camera({
-            position: [0, 2, 8],
+            position: [0, 20, 80],
             target: [0, 0, 0],
             fov: Math.PI / 4, // 45 degrees
             aspect: window.innerWidth / window.innerHeight,
