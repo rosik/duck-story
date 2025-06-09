@@ -18,9 +18,9 @@ export class CloudSystem extends SceneObject {
 
         // Cloud system properties
         this.cloudCount = options.cloudCount || 25;
-        this.spawnArea = options.spawnArea || { width: 100, height: 20, depth: 100 };
-        this.driftSpeed = options.driftSpeed || { x: 0.5, y: 0, z: -1.0 }; // Away from camera and slightly right
-        this.respawnDistance = options.respawnDistance || 50;
+        this.height = options.height || 0
+        this.windSpeed = options.windSpeed || options.driftSpeed || { x: 0.5, y: 0, z: -1.0 };
+        this.groundRadius = options.groundRadius || 100;
         this.performanceProfile = 'medium';
 
         // Individual clouds
@@ -96,21 +96,17 @@ export class CloudSystem extends SceneObject {
         });
 
         // Random position within spawn area
-        const x = MathUtils.random(-this.spawnArea.width / 2, this.spawnArea.width / 2);
-        const y = MathUtils.random(5, 5 + this.spawnArea.height);
-        const z = MathUtils.random(-this.spawnArea.depth / 2, this.spawnArea.depth / 2);
-        cloud.transform.setPosition(x, y, z);
+        const x = MathUtils.random(-this.groundRadius, this.groundRadius);
+        const z = MathUtils.random(-this.groundRadius, this.groundRadius);
+        cloud.transform.setPosition(x, this.height, z);
 
         // Random scale for variety
-        const scale = MathUtils.random(3, 4);
-        cloud.transform.setScale(scale, scale * 0.7, scale); // Flatter clouds
+        const scalex = MathUtils.random(3, 4);
+        const scalez = MathUtils.random(2, 5);
+        cloud.transform.setScale(scalex, scalex * 0.5, scalez); // Flatter clouds
 
-        // Individual drift speed variation
-        cloud.userData.driftSpeed = {
-            x: this.driftSpeed.x + MathUtils.random(-0.2, 0.2),
-            y: this.driftSpeed.y + MathUtils.random(-0.1, 0.1),
-            z: this.driftSpeed.z + MathUtils.random(-0.3, 0.3)
-        };
+        // Initialize outOfScene flag
+        cloud.userData.outOfScene = false;
 
         // Random opacity variation
         const opacity = MathUtils.random(0.6, 0.9);
@@ -137,61 +133,59 @@ export class CloudSystem extends SceneObject {
      * @param {number} deltaTime - Time since last update
      */
     updateCloud(cloud, deltaTime) {
-        const driftSpeed = cloud.userData.driftSpeed;
+        // Skip if cloud is paused
+        if (cloud.userData.paused) return;
 
-        // Move cloud
+        // Move cloud with unified wind speed
         cloud.transform.translate(
-            driftSpeed.x * deltaTime,
-            driftSpeed.y * deltaTime,
-            driftSpeed.z * deltaTime
+            this.windSpeed.x * deltaTime,
+            this.windSpeed.y * deltaTime,
+            this.windSpeed.z * deltaTime
         );
 
-        // Removed rotation to fix cloud movement issue
-        // cloud.transform.rotateDegrees(0, 5 * deltaTime, 0);
-
-        // Check if cloud has drifted too far and needs respawning
+        // Check if cloud has reached ground radius boundary
         const position = cloud.transform.position;
-        if (position.z < -this.respawnDistance ||
-            Math.abs(position.x) > this.spawnArea.width ||
-            position.y > 5 + this.spawnArea.height * 2) {
+        const distanceFromCenter = Math.sqrt(position.x * position.x + position.z * position.z);
 
-            this.respawnCloud(cloud);
+        if (distanceFromCenter >= this.groundRadius && !cloud.userData.outOfScene) {
+            cloud.userData.outOfScene = true;
+        }
+
+        // Re-initialize clouds that are marked as out of scene
+        if (cloud.userData.outOfScene) {
+            this.reinitializeCloud(cloud);
         }
     }
 
     /**
-     * Respawn cloud at starting position
-     * @param {SceneObject} cloud - Cloud to respawn
+     * Re-initialize cloud that has gone out of scene
+     * @param {SceneObject} cloud - Cloud to re-initialize
      */
-    respawnCloud(cloud) {
+    reinitializeCloud(cloud) {
         // Reset position to spawn area
-        const x = MathUtils.random(-this.spawnArea.width / 2, this.spawnArea.width / 2);
-        const y = MathUtils.random(5, 5 + this.spawnArea.height);
-        const z = MathUtils.random(this.spawnArea.depth / 4, this.spawnArea.depth / 2); // Start closer
+        const x = MathUtils.random(-this.groundRadius, this.groundRadius);
+        const z = MathUtils.random(-this.groundRadius, this.groundRadius); // Start closer
 
-        cloud.transform.setPosition(x, y, z);
+        cloud.transform.setPosition(x, this.height, z);
 
-        // Randomize scale again
-        const scale = MathUtils.random(0.5, 1.5);
+        // Consistent scale range (same as initial creation)
+        const scale = MathUtils.random(3, 4);
         cloud.transform.setScale(scale, scale * 0.7, scale);
 
-        // Randomize rotation
-        cloud.transform.setRotationDegrees(
-            MathUtils.random(-10, 10),
-            MathUtils.random(0, 360),
-            MathUtils.random(-5, 5)
-        );
-
-        // Vary drift speed
-        cloud.userData.driftSpeed = {
-            x: this.driftSpeed.x + MathUtils.random(-0.2, 0.2),
-            y: this.driftSpeed.y + MathUtils.random(-0.1, 0.1),
-            z: this.driftSpeed.z + MathUtils.random(-0.3, 0.3)
-        };
+        // Reset outOfScene flag
+        cloud.userData.outOfScene = false;
 
         // Vary opacity
         const opacity = MathUtils.random(0.6, 0.9);
         cloud.material.setOpacity(opacity);
+    }
+
+    /**
+     * Respawn cloud at starting position (legacy method for compatibility)
+     * @param {SceneObject} cloud - Cloud to respawn
+     */
+    respawnCloud(cloud) {
+        this.reinitializeCloud(cloud);
     }
 
     /**
@@ -223,28 +217,27 @@ export class CloudSystem extends SceneObject {
     }
 
     /**
-     * Set drift speed
-     * @param {Object} speed - Drift speed {x, y, z}
+     * Set wind speed (replaces setDriftSpeed)
+     * @param {Object} speed - Wind speed {x, y, z}
      */
-    setDriftSpeed(speed) {
-        this.driftSpeed = { ...speed };
-
-        // Update existing clouds with new base speed
-        for (const cloud of this.clouds) {
-            cloud.userData.driftSpeed = {
-                x: this.driftSpeed.x + MathUtils.random(-0.2, 0.2),
-                y: this.driftSpeed.y + MathUtils.random(-0.1, 0.1),
-                z: this.driftSpeed.z + MathUtils.random(-0.3, 0.3)
-            };
-        }
+    setWindSpeed(speed) {
+        this.windSpeed = { ...speed };
     }
 
     /**
-     * Set spawn area
-     * @param {Object} area - Spawn area {width, height, depth}
+     * Set drift speed (legacy method for compatibility)
+     * @param {Object} speed - Drift speed {x, y, z}
      */
-    setSpawnArea(area) {
-        this.spawnArea = { ...area };
+    setDriftSpeed(speed) {
+        this.setWindSpeed(speed);
+    }
+
+    /**
+     * Set ground radius for boundary detection
+     * @param {number} radius - Ground radius
+     */
+    setGroundRadius(radius) {
+        this.groundRadius = radius;
     }
 
     /**
@@ -288,11 +281,9 @@ export class CloudSystem extends SceneObject {
      * @param {number} strength - Wind strength multiplier
      */
     addWindEffect(windForce, strength = 1.0) {
-        for (const cloud of this.clouds) {
-            cloud.userData.driftSpeed.x += windForce.x * strength;
-            cloud.userData.driftSpeed.y += windForce.y * strength;
-            cloud.userData.driftSpeed.z += windForce.z * strength;
-        }
+        this.windSpeed.x += windForce.x * strength;
+        this.windSpeed.y += windForce.y * strength;
+        this.windSpeed.z += windForce.z * strength;
     }
 
     /**
@@ -300,7 +291,7 @@ export class CloudSystem extends SceneObject {
      */
     resetClouds() {
         for (const cloud of this.clouds) {
-            this.respawnCloud(cloud);
+            this.reinitializeCloud(cloud);
         }
     }
 
@@ -312,8 +303,10 @@ export class CloudSystem extends SceneObject {
         return {
             cloudCount: this.cloudCount,
             activeCount: this.clouds.filter(c => c.visible).length,
-            spawnArea: this.spawnArea,
-            driftSpeed: this.driftSpeed,
+            outOfSceneCount: this.clouds.filter(c => c.userData.outOfScene).length,
+            height: this.height,
+            windSpeed: this.windSpeed,
+            groundRadius: this.groundRadius,
             performanceProfile: this.performanceProfile
         };
     }
@@ -322,13 +315,14 @@ export class CloudSystem extends SceneObject {
      * Create preset cloud configurations
      */
     static createPresets() {
+        const windSpeed = { x: 5, y: 0, z: 0 };
         return {
             /**
              * Dense cloud cover
              */
             dense: () => new CloudSystem({
                 cloudCount: 40,
-                driftSpeed: { x: 0.3, y: 0, z: -0.8 },
+                windSpeed: windSpeed,
                 name: 'dense_clouds'
             }),
 
@@ -337,7 +331,7 @@ export class CloudSystem extends SceneObject {
              */
             sparse: () => new CloudSystem({
                 cloudCount: 10,
-                driftSpeed: { x: 0.7, y: 0, z: -1.2 },
+                windSpeed: windSpeed,
                 name: 'sparse_clouds'
             }),
 
@@ -346,7 +340,7 @@ export class CloudSystem extends SceneObject {
              */
             fast: () => new CloudSystem({
                 cloudCount: 20,
-                driftSpeed: { x: 1.0, y: 0, z: -2.0 },
+                windSpeed: windSpeed,
                 name: 'fast_clouds'
             }),
 
@@ -355,7 +349,7 @@ export class CloudSystem extends SceneObject {
              */
             slow: () => new CloudSystem({
                 cloudCount: 15,
-                driftSpeed: { x: 0.2, y: 0, z: -0.5 },
+                windSpeed: windSpeed,
                 name: 'slow_clouds'
             }),
 
@@ -364,7 +358,7 @@ export class CloudSystem extends SceneObject {
              */
             atmospheric: () => new CloudSystem({
                 cloudCount: 25,
-                driftSpeed: { x: 0.5, y: 0, z: -1.0 },
+                windSpeed: windSpeed,
                 name: 'atmospheric_clouds'
             })
         };

@@ -166,17 +166,17 @@ export class Scene {
     /**
      * Setup camera for start scene with gentle swaying
      */
-    setupStartCamera() {
+    setupStartCamera(options) {
         this.camera = new Camera({
-            position: [60, 30, 110],
-            target: [0, 0, 0],
-            fov: Math.PI / 6,
+            position: options.position || [60, 30, 110],
+            target: options.target || [0, 0, 0],
+            fov: options.fov || Math.PI / 6,
             aspect: window.innerWidth / window.innerHeight,
             near: 0.1,
             far: 1000,
-            swayEnabled: true,
-            swayAmplitude: 0.02,
-            swaySpeed: 0.5
+            swayEnabled: !!options.swayAmplitude,
+            swayAmplitude: options.swayAmplitude || 10,
+            swaySpeed: options.swaySpeed || 0.5,
         });
 
         console.log('Start scene camera setup complete');

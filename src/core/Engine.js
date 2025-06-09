@@ -233,17 +233,28 @@ export class Engine {
             radius: 100,
             borderSoftness: 10,
             color: [0.3, 0.9, 0.3],
+            segments: 50,
         });
         ground.init(this.renderer.gl);
         startScene.addObject(ground);
 
         // Add cloud system
-        const clouds = new CloudSystem();
+        const clouds = new CloudSystem({
+            cloudCount: 100,
+            windSpeed: { x: 0, y: 0, z: 7 },
+            groundRadius: 100,
+            height: 5,
+        });
         clouds.init(this.renderer.gl);
         startScene.addObject(clouds);
 
         // Setup camera with gentle swaying motion
-        startScene.setupStartCamera();
+        startScene.setupStartCamera({
+            position: [-90, 50, -110],
+            target: [0, 1, 0],
+            swayAmplitude: 0,
+            swaySpeed: 0.1,
+        });
 
         // Register the scene
         this.stateManager.registerScene('start', startScene);
