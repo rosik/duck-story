@@ -24,7 +24,7 @@ export class Scene {
         this.ambientLight = [0.3, 0.3, 0.4];
 
         // Performance
-        this.performanceProfile = 'high';
+        this.performanceProfile = 'medium';
         this.autoSort = true;
         this.frustumCulling = true;
 
@@ -106,7 +106,9 @@ export class Scene {
      * @returns {SceneObject|null} Found object or null
      */
     findObjectById(id) {
-        return this.objectsById.get(id) || null;
+        const ret = this.objectsById.get(id) || this.objects.find(obj => obj.findObjectById(id));
+        console.log("findObjectById", id, ret)
+        return ret
     }
 
     /**
@@ -115,7 +117,7 @@ export class Scene {
      * @returns {SceneObject[]} Array of matching objects
      */
     findObjectsByName(name) {
-        return this.objects.filter(obj => obj.name === name);
+        return this.objects.filter(obj => obj.name === name) || this.objects.find(obj => obj.findObjectByName(name));
     }
 
     /**
@@ -166,7 +168,7 @@ export class Scene {
      */
     setupStartCamera() {
         this.camera = new Camera({
-            position: [0, 20, 80],
+            position: [40, 80, 160],
             target: [0, 0, 0],
             fov: Math.PI / 4, // 45 degrees
             aspect: window.innerWidth / window.innerHeight,

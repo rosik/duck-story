@@ -16,9 +16,9 @@ export class GroundPlane extends SceneObject {
         });
 
         // Ground properties
-        this.color = options.color || [0.2, 0.8, 0.2]; // Green
+        this.color = options.color || [0.3, 0.9, 0.3]; // Green
         this.size = options.size || 200; // Large size for "infinite" appearance
-        this.segments = options.segments || 20; // Tessellation for better lighting
+        this.segments = options.segments || 100; // Tessellation for better lighting
         this.textureRepeat = options.textureRepeat || 10;
 
         // Defer mesh creation until WebGL context is available

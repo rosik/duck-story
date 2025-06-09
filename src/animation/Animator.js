@@ -19,7 +19,7 @@ export class Animator {
 
         // Performance
         this.maxConcurrentTweens = 100;
-        this.performanceProfile = 'high';
+        this.performanceProfile = 'medium';
     }
 
     /**

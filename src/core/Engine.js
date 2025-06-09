@@ -9,6 +9,10 @@ import { Scene } from '../scene/Scene.js';
 import { SkyGradient } from '../scene/components/SkyGradient.js';
 import { GroundPlane } from '../scene/components/GroundPlane.js';
 import { CloudSystem } from '../scene/components/CloudSystem.js';
+import { Mesh, GeometryGenerator } from '../rendering/Mesh.js';
+import { MaterialLibrary } from '../rendering/Material.js';
+import { SceneObject } from '../scene/SceneObject.js';
+import { Transform } from '../scene/Transform.js';
 
 /**
  * Main engine orchestrator
@@ -29,7 +33,7 @@ export class Engine {
 
         // Device and performance
         this.deviceInfo = null;
-        this.performanceProfile = 'high';
+        this.performanceProfile = 'medium';
 
         // Bind methods
         this.update = this.update.bind(this);
@@ -58,7 +62,7 @@ export class Engine {
             console.log('Device info:', this.deviceInfo);
 
             // Set initial performance profile based on device
-            this.performanceProfile = this.determineInitialPerformanceProfile();
+            this.performanceProfile = 'medium'; // this.determineInitialPerformanceProfile();
             console.log('Initial performance profile:', this.performanceProfile);
 
             // Initialize renderer
@@ -240,7 +244,21 @@ export class Engine {
         // Register the scene
         this.stateManager.registerScene('start', startScene);
 
-        console.log('Start scene created');
+        // Add white box at origin after scene is fully initialized
+        const boxGeometry = GeometryGenerator.createSphere(3);
+        const boxMesh = new Mesh(this.renderer.gl, boxGeometry);
+        const whiteMaterial = MaterialLibrary.createBasic([1, 1, 1]);
+        const box = new SceneObject({
+            name: 'sphere',
+            mesh: boxMesh,
+            material: whiteMaterial,
+            transform: new Transform({
+                position: [0, 0, 0]
+            })
+        });
+        startScene.addObject(box);
+
+        // console.log('Start scene created', startScene.getAllObjects());
     }
 
     /**

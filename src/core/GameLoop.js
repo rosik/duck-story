@@ -21,7 +21,7 @@ export class GameLoop {
         this.maxFPSHistory = 60;
 
         // Performance scaling
-        this.performanceProfile = 'high'; // high, medium, low
+        this.performanceProfile = 'medium'; // high, medium, low
         this.adaptiveScaling = true;
         this.performanceCheckInterval = 2000; // Check every 2 seconds
         this.lastPerformanceCheck = 0;

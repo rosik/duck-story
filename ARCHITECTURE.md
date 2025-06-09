@@ -7,8 +7,8 @@ This document outlines the architecture for a 3D browser game framework using pu
 ## Core Requirements
 
 - Start screen with atmospheric 3D scene
-- Clouds as white parallelepipeds drifting away from camera and slightly right
-- Infinite green ground plane
+- Clouds as white boxes drifting away from camera and slightly right
+- Infinite green ground plane (represented by a large circle)
 - Gradient sky (light blue to white)
 - Camera with gentle swaying motion
 - Interactive "START" button with hover animations

@@ -21,7 +21,7 @@ export class CloudSystem extends SceneObject {
         this.spawnArea = options.spawnArea || { width: 100, height: 20, depth: 100 };
         this.driftSpeed = options.driftSpeed || { x: 0.5, y: 0, z: -1.0 }; // Away from camera and slightly right
         this.respawnDistance = options.respawnDistance || 50;
-        this.performanceProfile = 'high';
+        this.performanceProfile = 'medium';
 
         // Individual clouds
         this.clouds = [];
@@ -102,7 +102,7 @@ export class CloudSystem extends SceneObject {
         cloud.transform.setPosition(x, y, z);
 
         // Random scale for variety
-        const scale = MathUtils.random(0.5, 1.5);
+        const scale = MathUtils.random(3, 4);
         cloud.transform.setScale(scale, scale * 0.7, scale); // Flatter clouds
 
         // Random rotation

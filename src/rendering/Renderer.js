@@ -25,7 +25,7 @@ export class Renderer {
         this.ambientColor = [0.3, 0.3, 0.4];
 
         // Performance settings
-        this.performanceProfile = 'high';
+        this.performanceProfile = 'medium';
         this.enableCulling = true;
         this.enableDepthTest = true;
 
@@ -127,12 +127,30 @@ export class Renderer {
     }
 
     /**
+     * Reload shaders (useful for development)
+     */
+    async reloadShaders() {
+        console.log('Reloading shaders...');
+
+        // Destroy existing shaders
+        this.shaderLibrary.destroy();
+        this.shaderLibrary = new ShaderLibrary(this.gl);
+
+        // Reload all shaders
+        await this.loadDefaultShaders();
+
+        console.log('Shaders reloaded successfully');
+    }
+
+    /**
      * Load shader source from file
      * @param {string} path - Path to shader file
      * @returns {Promise<string>} Shader source code
      */
     async loadShaderSource(path) {
-        const response = await fetch(path);
+        // Add cache-busting parameter to ensure fresh shader files
+        const cacheBuster = Date.now();
+        const response = await fetch(`${path}?v=${cacheBuster}`);
         if (!response.ok) {
             throw new Error(`Failed to load shader: ${path}`);
         }

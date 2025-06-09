@@ -144,9 +144,11 @@ export class Material {
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
         }
 
-        // Apply uniforms to shader
+        // Apply uniforms to shader (only if they exist in the shader)
         for (const [name, value] of this.uniforms) {
-            shader.setUniform(name, value);
+            if (shader.hasUniform(name)) {
+                shader.setUniform(name, value);
+            }
         }
     }
 
