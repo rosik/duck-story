@@ -105,13 +105,6 @@ export class CloudSystem extends SceneObject {
         const scale = MathUtils.random(3, 4);
         cloud.transform.setScale(scale, scale * 0.7, scale); // Flatter clouds
 
-        // Random rotation
-        cloud.transform.setRotationDegrees(
-            MathUtils.random(-10, 10),
-            MathUtils.random(0, 360),
-            MathUtils.random(-5, 5)
-        );
-
         // Individual drift speed variation
         cloud.userData.driftSpeed = {
             x: this.driftSpeed.x + MathUtils.random(-0.2, 0.2),

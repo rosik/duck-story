@@ -63,10 +63,6 @@ void main() {
         discard;
     }
 
-    // Optional: blend with border color at the edges for visual enhancement
-    float borderBlend = smoothstep(maskRadius - maskSoftness * 2.0, maskRadius - maskSoftness, distanceFromCenter);
-    finalColor = mix(finalColor, u_borderColor, borderBlend * 0.1);
-
     // Create smooth alpha transition at the border
     float finalAlpha = u_opacity * mask;
 

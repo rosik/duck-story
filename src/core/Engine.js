@@ -229,7 +229,11 @@ export class Engine {
         startScene.addObject(sky);
 
         // Add ground plane
-        const ground = new GroundPlane();
+        const ground = new GroundPlane({
+            radius: 100,
+            borderSoftness: 10,
+            color: [0.3, 0.9, 0.3],
+        });
         ground.init(this.renderer.gl);
         startScene.addObject(ground);
 

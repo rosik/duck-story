@@ -17,14 +17,12 @@ export class GroundPlane extends SceneObject {
 
         // Ground properties
         this.color = options.color || [0.3, 0.9, 0.3]; // Green
-        this.size = options.size || 200; // Large size for "infinite" appearance
+        this.radius = options.radius || 100;
         this.segments = options.segments || 100; // Tessellation for better lighting
         this.textureRepeat = options.textureRepeat || 10;
 
         // Circular border properties
-        this.borderRadius = options.borderRadius || this.size * 0.4; // 40% of ground size for more visible effect
-        this.borderSoftness = options.borderSoftness || this.size * 0.15; // 15% of ground size for smoother transition
-        this.borderColor = options.borderColor || [0.2, 0.7, 0.2]; // Slightly darker green
+        this.borderSoftness = options.borderSoftness || 0;
 
         // Defer mesh creation until WebGL context is available
         this.mesh = null;
@@ -62,8 +60,8 @@ export class GroundPlane extends SceneObject {
     createGroundGeometry() {
         // Use GeometryGenerator to create horizontal plane geometry (XZ axis)
         const baseGeometry = GeometryGenerator.createPlane(
-            this.size,
-            this.size,
+            this.radius*2,
+            this.radius*2,
             this.segments,
             this.segments,
             'xz'
@@ -112,9 +110,8 @@ export class GroundPlane extends SceneObject {
         this.material.receiveShadows = true;
 
         // Set circular border uniforms
-        this.material.setUniform('u_borderRadius', this.borderRadius);
+        this.material.setUniform('u_borderRadius', this.radius);
         this.material.setUniform('u_borderSoftness', this.borderSoftness);
-        this.material.setUniform('u_borderColor', this.borderColor);
 
         // Enable transparency for the circular fade-out effect
         this.material.transparent = true;
@@ -134,15 +131,11 @@ export class GroundPlane extends SceneObject {
     }
 
     /**
-     * Set ground size
-     * @param {number} size - Ground plane size
+     * Set ground radius
+     * @param {number} radius - Ground plane radius
      */
-    setGroundSize(size) {
-        this.size = size;
-
-        // Update border radius to maintain 40% ratio
-        this.borderRadius = this.size * 0.4;
-        this.borderSoftness = this.size * 0.15;
+    setGroundRadius(radius) {
+        this.radius = radius;
 
         if (this.material) {
             this.material.setUniform('u_borderRadius', this.borderRadius);
@@ -246,9 +239,8 @@ export class GroundPlane extends SceneObject {
         };
 
         // Check if intersection is within ground bounds
-        const halfSize = this.size * 0.5;
-        if (Math.abs(intersectionPoint.x) > halfSize ||
-            Math.abs(intersectionPoint.z) > halfSize) {
+        if (Math.abs(intersectionPoint.x) > this.radius ||
+            Math.abs(intersectionPoint.z) > this.radius) {
             return null; // Outside ground bounds
         }
 
