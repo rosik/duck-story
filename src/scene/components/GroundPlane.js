@@ -21,6 +21,11 @@ export class GroundPlane extends SceneObject {
         this.segments = options.segments || 100; // Tessellation for better lighting
         this.textureRepeat = options.textureRepeat || 10;
 
+        // Circular border properties
+        this.borderRadius = options.borderRadius || this.size * 0.4; // 40% of ground size for more visible effect
+        this.borderSoftness = options.borderSoftness || this.size * 0.15; // 15% of ground size for smoother transition
+        this.borderColor = options.borderColor || [0.2, 0.7, 0.2]; // Slightly darker green
+
         // Defer mesh creation until WebGL context is available
         this.mesh = null;
         this.material = null;
@@ -99,12 +104,20 @@ export class GroundPlane extends SceneObject {
      */
     createGroundMaterial() {
         this.material = MaterialLibrary.createGround(this.color);
-        this.material.shader = 'basic';
+        this.material.shader = 'ground';
 
         // Set material properties for ground
         this.material.ambient = [0.4, 0.4, 0.4];
         this.material.diffuse = [0.8, 0.8, 0.8];
         this.material.receiveShadows = true;
+
+        // Set circular border uniforms
+        this.material.setUniform('u_borderRadius', this.borderRadius);
+        this.material.setUniform('u_borderSoftness', this.borderSoftness);
+        this.material.setUniform('u_borderColor', this.borderColor);
+
+        // Enable transparency for the circular fade-out effect
+        this.material.transparent = true;
     }
 
     /**
@@ -126,6 +139,16 @@ export class GroundPlane extends SceneObject {
      */
     setGroundSize(size) {
         this.size = size;
+
+        // Update border radius to maintain 40% ratio
+        this.borderRadius = this.size * 0.4;
+        this.borderSoftness = this.size * 0.15;
+
+        if (this.material) {
+            this.material.setUniform('u_borderRadius', this.borderRadius);
+            this.material.setUniform('u_borderSoftness', this.borderSoftness);
+        }
+
         this.createGroundMesh();
         this.needsUpdate = true;
     }
@@ -137,6 +160,30 @@ export class GroundPlane extends SceneObject {
     setSegments(segments) {
         this.segments = Math.max(1, segments);
         this.createGroundMesh();
+        this.needsUpdate = true;
+    }
+
+    /**
+     * Set border radius for circular clipping
+     * @param {number} radius - Border radius in world units
+     */
+    setBorderRadius(radius) {
+        this.borderRadius = Math.max(0, radius);
+        if (this.material) {
+            this.material.setUniform('u_borderRadius', this.borderRadius);
+        }
+        this.needsUpdate = true;
+    }
+
+    /**
+     * Set border softness for smooth transition
+     * @param {number} softness - Border softness in world units
+     */
+    setBorderSoftness(softness) {
+        this.borderSoftness = Math.max(0, softness);
+        if (this.material) {
+            this.material.setUniform('u_borderSoftness', this.borderSoftness);
+        }
         this.needsUpdate = true;
     }
 

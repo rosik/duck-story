@@ -118,6 +118,10 @@ export class Renderer {
             const cloudFragmentSource = await this.loadShaderSource('src/shaders/fragment/cloud.frag');
             this.shaderLibrary.create('cloud', basicVertexSource, cloudFragmentSource);
 
+            // Load ground shader
+            const groundFragmentSource = await this.loadShaderSource('src/shaders/fragment/ground.frag');
+            this.shaderLibrary.create('ground', basicVertexSource, groundFragmentSource);
+
             console.log('Default shaders loaded');
 
         } catch (error) {
@@ -305,17 +309,23 @@ export class Renderer {
      * @returns {SceneObject[]} Sorted objects
      */
     sortObjects(objects) {
-        return objects.slice().sort((a, b) => {
-            // Sky objects first (no depth testing)
+        const sorted = objects.slice().sort((a, b) => {
+            // Fixed rendering order: Sky -> Ground -> Everything else by renderOrder
+            const aOrder = a.renderOrder || 0;
+            const bOrder = b.renderOrder || 0;
+
+            // Sky always first
             if (a.type === 'sky' && b.type !== 'sky') return -1;
             if (b.type === 'sky' && a.type !== 'sky') return 1;
 
-            // Opaque objects before transparent
-            const aTransparent = a.material && a.material.transparent;
-            const bTransparent = b.material && b.material.transparent;
+            // Ground always second (after sky)
+            if (a.type === 'ground' && b.type !== 'ground' && b.type !== 'sky') return -1;
+            if (b.type === 'ground' && a.type !== 'ground' && a.type !== 'sky') return 1;
 
-            if (!aTransparent && bTransparent) return -1;
-            if (aTransparent && !bTransparent) return 1;
+            // For all other objects, sort by renderOrder
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
 
             // Sort by shader to minimize state changes
             const aShader = this.getShaderNameForObject(a);
@@ -327,6 +337,8 @@ export class Renderer {
 
             return 0;
         });
+
+        return sorted;
     }
 
     /**
