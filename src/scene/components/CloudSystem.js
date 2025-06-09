@@ -153,8 +153,8 @@ export class CloudSystem extends SceneObject {
             driftSpeed.z * deltaTime
         );
 
-        // Add subtle rotation
-        cloud.transform.rotateDegrees(0, 5 * deltaTime, 0);
+        // Removed rotation to fix cloud movement issue
+        // cloud.transform.rotateDegrees(0, 5 * deltaTime, 0);
 
         // Check if cloud has drifted too far and needs respawning
         const position = cloud.transform.position;

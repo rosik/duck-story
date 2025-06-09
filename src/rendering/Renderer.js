@@ -12,7 +12,7 @@ export class Renderer {
         this.gl = null;
 
         // Rendering state
-        this.clearColor = [0.0, 0.0, 0.0, 1.0];
+        this.clearColor = [0.5, 0.8, 1.0, 1.0]; // Light blue to match sky gradient
         this.viewport = { x: 0, y: 0, width: 0, height: 0 };
 
         // Shader management
