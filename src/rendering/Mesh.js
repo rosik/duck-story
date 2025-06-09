@@ -389,12 +389,14 @@ export class GeometryGenerator {
      * @param {number} height - Plane height
      * @param {number} widthSegments - Width segments
      * @param {number} heightSegments - Height segments
+     * @param {string} axis - Plane orientation: 'xy', 'xz', or 'yz'
      * @returns {Object} Plane geometry
      */
-    static createPlane(width = 1, height = 1, widthSegments = 1, heightSegments = 1) {
+    static createPlane(width = 1, height = 1, widthSegments = 1, heightSegments = 1, axis = 'xy') {
         const vertices = [];
         const indices = [];
         const texCoords = [];
+        const normals = [];
 
         const w = width * 0.5;
         const h = height * 0.5;
@@ -407,7 +409,25 @@ export class GeometryGenerator {
                 const x = -w + (ix / widthSegments) * width;
                 const u = ix / widthSegments;
 
-                vertices.push(x, y, 0);
+                // Generate vertices based on axis orientation
+                switch (axis) {
+                    case 'xy':
+                        vertices.push(x, y, 0);
+                        normals.push(0, 0, 1);
+                        break;
+                    case 'xz':
+                        vertices.push(x, 0, y);
+                        normals.push(0, 1, 0);
+                        break;
+                    case 'yz':
+                        vertices.push(0, x, y);
+                        normals.push(1, 0, 0);
+                        break;
+                    default:
+                        vertices.push(x, y, 0);
+                        normals.push(0, 0, 1);
+                }
+
                 texCoords.push(u, v);
             }
         }
@@ -424,7 +444,7 @@ export class GeometryGenerator {
             }
         }
 
-        return { vertices, indices, texCoords };
+        return { vertices, indices, texCoords, normals };
     }
 
     /**

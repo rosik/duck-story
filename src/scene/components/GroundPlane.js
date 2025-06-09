@@ -52,67 +52,43 @@ export class GroundPlane extends SceneObject {
     }
 
     /**
-     * Create ground plane geometry
+     * Create ground plane geometry using GeometryGenerator
      */
     createGroundGeometry() {
-        const vertices = [];
-        const indices = [];
-        const normals = [];
+        // Use GeometryGenerator to create horizontal plane geometry (XZ axis)
+        const baseGeometry = GeometryGenerator.createPlane(
+            this.size,
+            this.size,
+            this.segments,
+            this.segments,
+            'xz'
+        );
+
+        // Apply texture tiling to base texture coordinates
         const texCoords = [];
-        const colors = [];
-
-        const size = this.size;
-        const segments = this.segments;
-        const halfSize = size * 0.5;
-        const segmentSize = size / segments;
-
-        // Generate vertices
-        for (let i = 0; i <= segments; i++) {
-            for (let j = 0; j <= segments; j++) {
-                const x = -halfSize + j * segmentSize;
-                const z = -halfSize + i * segmentSize;
-                const y = 0;
-
-                // Add vertex position
-                vertices.push(x, y, z);
-
-                // Add normal (pointing up)
-                normals.push(0, 1, 0);
-
-                // Add texture coordinates with tiling
-                const u = (j / segments) * this.textureRepeat;
-                const v = (i / segments) * this.textureRepeat;
-                texCoords.push(u, v);
-
-                // Add vertex color with slight variation for visual interest
-                const variation = 0.1;
-                const colorVariation = (Math.random() - 0.5) * variation;
-                colors.push(
-                    Math.max(0, Math.min(1, this.color[0] + colorVariation)),
-                    Math.max(0, Math.min(1, this.color[1] + colorVariation)),
-                    Math.max(0, Math.min(1, this.color[2] + colorVariation))
-                );
-            }
+        for (let i = 0; i < baseGeometry.texCoords.length; i += 2) {
+            const u = baseGeometry.texCoords[i] * this.textureRepeat;
+            const v = baseGeometry.texCoords[i + 1] * this.textureRepeat;
+            texCoords.push(u, v);
         }
 
-        // Generate indices for triangles
-        for (let i = 0; i < segments; i++) {
-            for (let j = 0; j < segments; j++) {
-                const a = i * (segments + 1) + j;
-                const b = a + segments + 1;
-                const c = a + 1;
-                const d = b + 1;
-
-                // Two triangles per quad
-                indices.push(a, b, c);
-                indices.push(c, b, d);
-            }
+        // Generate vertex colors with slight variation for visual interest
+        const colors = [];
+        const vertexCount = baseGeometry.vertices.length / 3;
+        const variation = 0.1;
+        for (let i = 0; i < vertexCount; i++) {
+            const colorVariation = (Math.random() - 0.5) * variation;
+            colors.push(
+                Math.max(0, Math.min(1, this.color[0] + colorVariation)),
+                Math.max(0, Math.min(1, this.color[1] + colorVariation)),
+                Math.max(0, Math.min(1, this.color[2] + colorVariation))
+            );
         }
 
         return {
-            vertices,
-            indices,
-            normals,
+            vertices: baseGeometry.vertices,
+            indices: baseGeometry.indices,
+            normals: baseGeometry.normals,
             texCoords,
             colors
         };
