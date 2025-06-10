@@ -23,6 +23,11 @@ export class CloudSystem extends SceneObject {
         this.groundRadius = options.groundRadius || 100;
         this.performanceProfile = 'medium';
 
+        // Clouds generator state
+        this.nextX = 0;
+        // this.stepX = this.groundRadius/16
+        this.stepX = Math.sqrt(Math.PI*this.groundRadius**2/this.cloudCount) / 3.5
+
         // Individual clouds
         this.clouds = [];
         this.cloudMesh = null;
@@ -95,22 +100,11 @@ export class CloudSystem extends SceneObject {
             material: this.cloudMaterial.clone()
         });
 
-        // Random position within spawn area
-        const x = MathUtils.random(-this.groundRadius, this.groundRadius);
-        const z = MathUtils.random(-this.groundRadius, this.groundRadius);
-        cloud.transform.setPosition(x, this.height, z);
-
-        // Random scale for variety
-        const scalex = MathUtils.random(3, 4);
-        const scalez = MathUtils.random(2, 5);
-        cloud.transform.setScale(scalex, scalex * 0.5, scalez); // Flatter clouds
-
-        // Initialize outOfScene flag
-        cloud.userData.outOfScene = false;
-
-        // Random opacity variation
-        const opacity = MathUtils.random(0.6, 0.9);
-        cloud.material.setOpacity(opacity);
+        this.reinitializeCloud(cloud)
+        const pos = cloud.transform.position;
+        const zMax = Math.sqrt(this.groundRadius**2 - pos.x**2);
+        pos.z = MathUtils.random(-zMax, zMax);
+        // cloud.transform.setPosition(pos);
 
         return cloud;
     }
@@ -163,10 +157,19 @@ export class CloudSystem extends SceneObject {
      */
     reinitializeCloud(cloud) {
         // Reset position to spawn area
-        const x = MathUtils.random(-this.groundRadius, this.groundRadius);
-        const z = MathUtils.random(-this.groundRadius, this.groundRadius); // Start closer
-
-        cloud.transform.setPosition(x, this.height, z);
+        const x = this.nextX; // MathUtils.random(-this.groundRadius, this.groundRadius);
+        this.nextX = this.nextX > 0
+            ? (-this.nextX - this.stepX)
+            : (-this.nextX + this.stepX);
+        if (Math.abs(this.nextX) > this.groundRadius) {
+            this.nextX = this.nextX > 0
+                ? (this.nextX - this.groundRadius)
+                : (this.nextX + this.groundRadius);
+            console.log("nextX", this.nextX, this.groundRadius);
+        }
+        // const z = MathUtils.random(-this.groundRadius, this.groundRadius);
+        const z = -Math.sqrt(this.groundRadius**2 - x**2);
+        cloud.transform.setPosition(x, this.height, z+1);
 
         // Consistent scale range (same as initial creation)
         const scale = MathUtils.random(3, 4);

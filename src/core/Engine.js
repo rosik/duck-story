@@ -240,7 +240,7 @@ export class Engine {
 
         // Add cloud system
         const clouds = new CloudSystem({
-            cloudCount: 100,
+            cloudCount: 80,
             windSpeed: { x: 0, y: 0, z: 7 },
             groundRadius: 100,
             height: 5,
@@ -252,6 +252,7 @@ export class Engine {
         startScene.setupStartCamera({
             position: [-90, 50, -110],
             target: [0, 1, 0],
+            fov: Math.PI / 5,
             swayAmplitude: 0,
             swaySpeed: 0.1,
         });
