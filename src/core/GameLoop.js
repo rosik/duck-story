@@ -22,7 +22,7 @@ export class GameLoop {
 
         // Performance scaling
         this.performanceProfile = 'medium'; // high, medium, low
-        this.adaptiveScaling = true;
+        this.adaptiveScaling = false;
         this.performanceCheckInterval = 2000; // Check every 2 seconds
         this.lastPerformanceCheck = 0;
 
