@@ -15,6 +15,7 @@ import { SceneObject } from '../scene/SceneObject.js';
 import { Transform } from '../scene/Transform.js';
 import { Animator } from '../animation/Animator.js';
 import { Tween } from '../animation/Tween.js';
+import { modelLoader } from '../rendering/ModelLoader.js';
 
 /**
  * Main engine orchestrator
@@ -268,19 +269,78 @@ export class Engine {
         // Register the scene
         this.stateManager.registerScene('start', startScene);
 
-        // Add white box at origin after scene is fully initialized
-        const boxGeometry = GeometryGenerator.createSphere(3);
-        const boxMesh = new Mesh(this.renderer.gl, boxGeometry);
-        const whiteMaterial = MaterialLibrary.createBasic([1, 1, 1]);
-        const box = new SceneObject({
-            name: 'sphere',
-            mesh: boxMesh,
-            material: whiteMaterial,
-            transform: new Transform({
-                position: [0, 0, 0]
-            })
-        });
-        startScene.addObject(box);
+        // Load and add rubber duck model
+        try {
+            console.log('Loading rubber duck model...');
+            const modelData = await modelLoader.loadModel('gltf/Rubber_Duck.gltf');
+
+            // Create geometries from all meshes in the model
+            const geometries = GeometryGenerator.createAllFromModel(modelData, {
+                scale: [2, 2, 2], // Scale up the model
+                center: true,     // Center the model at origin
+                flipY: false      // Don't flip Y coordinates
+            });
+
+            // Create scene objects for each geometry
+            for (let i = 0; i < geometries.length; i++) {
+                const geometry = geometries[i];
+                const mesh = new Mesh(this.renderer.gl, geometry);
+
+                // Create material based on model material or use default
+                let material;
+                if (geometry.materialIndex !== null &&
+                    modelData.materials &&
+                    modelData.materials[geometry.materialIndex]) {
+
+                    const modelMaterial = modelData.materials[geometry.materialIndex];
+                    material = MaterialLibrary.createBasic(
+                        modelMaterial.color.slice(0, 3), // RGB only
+                        modelMaterial.color[3] || 1.0    // Alpha
+                    );
+
+                    // Apply texture if available
+                    if (modelMaterial.textures.baseColor) {
+                        // TODO: Create WebGL texture from model texture data
+                        // material.setTexture(webglTexture);
+                    }
+                } else {
+                    // Use default yellow material for rubber duck
+                    material = MaterialLibrary.createBasic([1.0, 0.8, 0.2]);
+                }
+
+                const modelObject = new SceneObject({
+                    name: `rubber_duck_${i}`,
+                    mesh: mesh,
+                    material: material,
+                    transform: new Transform({
+                        position: [0, 0, 0],
+                        rotation: [0, 0, 0],
+                        scale: [1, 1, 1]
+                    })
+                });
+
+                startScene.addObject(modelObject);
+            }
+
+            console.log('Rubber duck model loaded successfully');
+
+        } catch (error) {
+            console.error('Failed to load rubber duck model:', error);
+
+            // Fallback to yellow sphere if model loading fails
+            const fallbackGeometry = GeometryGenerator.createSphere(3);
+            const fallbackMesh = new Mesh(this.renderer.gl, fallbackGeometry);
+            const fallbackMaterial = MaterialLibrary.createBasic([1.0, 0.8, 0.2]); // Yellow
+            const fallbackObject = new SceneObject({
+                name: 'fallback_sphere',
+                mesh: fallbackMesh,
+                material: fallbackMaterial,
+                transform: new Transform({
+                    position: [0, 0, 0]
+                })
+            });
+            startScene.addObject(fallbackObject);
+        }
 
         // console.log('Start scene created', startScene.getAllObjects());
     }

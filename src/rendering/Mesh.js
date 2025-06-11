@@ -490,4 +490,364 @@ export class GeometryGenerator {
 
         return { vertices, indices, texCoords };
     }
+
+    /**
+     * Create geometry from loaded model data
+     * @param {Object} modelData - Processed model data from ModelLoader
+     * @param {Object} options - Creation options
+     * @returns {Object} Mesh geometry compatible with existing system
+     */
+    static createFromModel(modelData, options = {}) {
+        const {
+            meshIndex = 0,
+            primitiveIndex = 0,
+            flipY = false,
+            scale = [1, 1, 1],
+            center = false
+        } = options;
+
+        if (!modelData.meshes || meshIndex >= modelData.meshes.length) {
+            throw new Error(`Mesh index ${meshIndex} not found in model`);
+        }
+
+        const mesh = modelData.meshes[meshIndex];
+        if (!mesh.primitives || primitiveIndex >= mesh.primitives.length) {
+            throw new Error(`Primitive index ${primitiveIndex} not found in mesh`);
+        }
+
+        const primitive = mesh.primitives[primitiveIndex];
+        const geometry = {
+            vertices: [],
+            indices: [],
+            normals: [],
+            texCoords: [],
+            colors: [],
+            materialIndex: primitive.material
+        };
+
+        // Extract vertex positions
+        if (primitive.attributes.POSITION) {
+            const positions = primitive.attributes.POSITION;
+            geometry.vertices = Array.from(positions);
+        }
+
+        // Extract normals
+        if (primitive.attributes.NORMAL) {
+            const normals = primitive.attributes.NORMAL;
+            geometry.normals = Array.from(normals);
+        }
+
+        // Extract texture coordinates
+        if (primitive.attributes.TEXCOORD_0) {
+            const texCoords = primitive.attributes.TEXCOORD_0;
+            geometry.texCoords = Array.from(texCoords);
+        }
+
+        // Extract vertex colors
+        if (primitive.attributes.COLOR_0) {
+            const colors = primitive.attributes.COLOR_0;
+            geometry.colors = Array.from(colors);
+        }
+
+        // Extract indices
+        if (primitive.indices) {
+            geometry.indices = Array.from(primitive.indices);
+        }
+
+        // Apply transformations
+        if (scale[0] !== 1 || scale[1] !== 1 || scale[2] !== 1) {
+            this.scaleGeometry(geometry, scale);
+        }
+
+        if (flipY) {
+            this.flipGeometryY(geometry);
+        }
+
+        if (center) {
+            this.centerGeometry(geometry);
+        }
+
+        // Set primitive type based on glTF mode
+        switch (primitive.mode) {
+            case 0: geometry.primitiveType = 'POINTS'; break;
+            case 1: geometry.primitiveType = 'LINES'; break;
+            case 2: geometry.primitiveType = 'LINE_LOOP'; break;
+            case 3: geometry.primitiveType = 'LINE_STRIP'; break;
+            case 4: geometry.primitiveType = 'TRIANGLES'; break;
+            case 5: geometry.primitiveType = 'TRIANGLE_STRIP'; break;
+            case 6: geometry.primitiveType = 'TRIANGLE_FAN'; break;
+            default: geometry.primitiveType = 'TRIANGLES';
+        }
+
+        return geometry;
+    }
+
+    /**
+     * Create multiple geometries from all meshes in model
+     * @param {Object} modelData - Processed model data from ModelLoader
+     * @param {Object} options - Creation options
+     * @returns {Array} Array of mesh geometries
+     */
+    static createAllFromModel(modelData, options = {}) {
+        const geometries = [];
+
+        for (let meshIndex = 0; meshIndex < modelData.meshes.length; meshIndex++) {
+            const mesh = modelData.meshes[meshIndex];
+
+            for (let primitiveIndex = 0; primitiveIndex < mesh.primitives.length; primitiveIndex++) {
+                const geometry = this.createFromModel(modelData, {
+                    ...options,
+                    meshIndex,
+                    primitiveIndex
+                });
+
+                geometry.meshName = mesh.name;
+                geometry.meshIndex = meshIndex;
+                geometry.primitiveIndex = primitiveIndex;
+
+                geometries.push(geometry);
+            }
+        }
+
+        return geometries;
+    }
+
+    /**
+     * Scale geometry vertices
+     * @param {Object} geometry - Geometry to scale
+     * @param {number[]} scale - Scale factors [x, y, z]
+     */
+    static scaleGeometry(geometry, scale) {
+        for (let i = 0; i < geometry.vertices.length; i += 3) {
+            geometry.vertices[i] *= scale[0];
+            geometry.vertices[i + 1] *= scale[1];
+            geometry.vertices[i + 2] *= scale[2];
+        }
+    }
+
+    /**
+     * Flip geometry Y coordinates
+     * @param {Object} geometry - Geometry to flip
+     */
+    static flipGeometryY(geometry) {
+        for (let i = 1; i < geometry.vertices.length; i += 3) {
+            geometry.vertices[i] = -geometry.vertices[i];
+        }
+
+        // Also flip normals if present
+        for (let i = 1; i < geometry.normals.length; i += 3) {
+            geometry.normals[i] = -geometry.normals[i];
+        }
+    }
+
+    /**
+     * Center geometry around origin
+     * @param {Object} geometry - Geometry to center
+     */
+    static centerGeometry(geometry) {
+        if (geometry.vertices.length === 0) return;
+
+        // Calculate bounding box
+        let minX = geometry.vertices[0], maxX = geometry.vertices[0];
+        let minY = geometry.vertices[1], maxY = geometry.vertices[1];
+        let minZ = geometry.vertices[2], maxZ = geometry.vertices[2];
+
+        for (let i = 3; i < geometry.vertices.length; i += 3) {
+            minX = Math.min(minX, geometry.vertices[i]);
+            maxX = Math.max(maxX, geometry.vertices[i]);
+            minY = Math.min(minY, geometry.vertices[i + 1]);
+            maxY = Math.max(maxY, geometry.vertices[i + 1]);
+            minZ = Math.min(minZ, geometry.vertices[i + 2]);
+            maxZ = Math.max(maxZ, geometry.vertices[i + 2]);
+        }
+
+        // Calculate center offset
+        const centerX = (minX + maxX) * 0.5;
+        const centerY = (minY + maxY) * 0.5;
+        const centerZ = (minZ + maxZ) * 0.5;
+
+        // Apply offset
+        for (let i = 0; i < geometry.vertices.length; i += 3) {
+            geometry.vertices[i] -= centerX;
+            geometry.vertices[i + 1] -= centerY;
+            geometry.vertices[i + 2] -= centerZ;
+        }
+    }
+
+    /**
+     * Create geometry from model node (with transformations)
+     * @param {Object} modelData - Processed model data from ModelLoader
+     * @param {number} nodeIndex - Node index to process
+     * @param {Object} options - Creation options
+     * @returns {Object} Transformed geometry
+     */
+    static createFromModelNode(modelData, nodeIndex, options = {}) {
+        if (!modelData.nodes || nodeIndex >= modelData.nodes.length) {
+            throw new Error(`Node index ${nodeIndex} not found in model`);
+        }
+
+        const node = modelData.nodes[nodeIndex];
+        if (node.mesh === null || node.mesh === undefined) {
+            throw new Error(`Node ${nodeIndex} has no mesh`);
+        }
+
+        // Get base geometry from mesh
+        const geometry = this.createFromModel(modelData, {
+            ...options,
+            meshIndex: node.mesh
+        });
+
+        // Apply node transformations
+        this.applyNodeTransform(geometry, node);
+
+        return geometry;
+    }
+
+    /**
+     * Apply node transformation to geometry
+     * @param {Object} geometry - Geometry to transform
+     * @param {Object} node - glTF node with transformation data
+     */
+    static applyNodeTransform(geometry, node) {
+        // Create transformation matrix
+        let matrix;
+
+        if (node.matrix) {
+            matrix = node.matrix;
+        } else {
+            // Build matrix from TRS
+            matrix = this.createTRSMatrix(
+                node.translation,
+                node.rotation,
+                node.scale
+            );
+        }
+
+        // Apply transformation to vertices
+        for (let i = 0; i < geometry.vertices.length; i += 3) {
+            const vertex = [
+                geometry.vertices[i],
+                geometry.vertices[i + 1],
+                geometry.vertices[i + 2],
+                1
+            ];
+
+            const transformed = this.multiplyMatrixVector(matrix, vertex);
+
+            geometry.vertices[i] = transformed[0];
+            geometry.vertices[i + 1] = transformed[1];
+            geometry.vertices[i + 2] = transformed[2];
+        }
+
+        // Apply transformation to normals (use inverse transpose)
+        if (geometry.normals.length > 0) {
+            const normalMatrix = this.invertMatrix3x3(matrix);
+
+            for (let i = 0; i < geometry.normals.length; i += 3) {
+                const normal = [
+                    geometry.normals[i],
+                    geometry.normals[i + 1],
+                    geometry.normals[i + 2]
+                ];
+
+                const transformed = this.multiplyMatrix3Vector(normalMatrix, normal);
+
+                geometry.normals[i] = transformed[0];
+                geometry.normals[i + 1] = transformed[1];
+                geometry.normals[i + 2] = transformed[2];
+            }
+        }
+    }
+
+    /**
+     * Create transformation matrix from translation, rotation, scale
+     * @param {number[]} translation - Translation [x, y, z]
+     * @param {number[]} rotation - Rotation quaternion [x, y, z, w]
+     * @param {number[]} scale - Scale [x, y, z]
+     * @returns {number[]} 4x4 transformation matrix
+     */
+    static createTRSMatrix(translation, rotation, scale) {
+        const [tx, ty, tz] = translation;
+        const [qx, qy, qz, qw] = rotation;
+        const [sx, sy, sz] = scale;
+
+        // Convert quaternion to rotation matrix
+        const x2 = qx + qx, y2 = qy + qy, z2 = qz + qz;
+        const xx = qx * x2, xy = qx * y2, xz = qx * z2;
+        const yy = qy * y2, yz = qy * z2, zz = qz * z2;
+        const wx = qw * x2, wy = qw * y2, wz = qw * z2;
+
+        return [
+            (1 - (yy + zz)) * sx, (xy + wz) * sx, (xz - wy) * sx, tx,
+            (xy - wz) * sy, (1 - (xx + zz)) * sy, (yz + wx) * sy, ty,
+            (xz + wy) * sz, (yz - wx) * sz, (1 - (xx + yy)) * sz, tz,
+            0, 0, 0, 1
+        ];
+    }
+
+    /**
+     * Multiply 4x4 matrix by 4D vector
+     * @param {number[]} matrix - 4x4 matrix (column-major)
+     * @param {number[]} vector - 4D vector
+     * @returns {number[]} Transformed vector
+     */
+    static multiplyMatrixVector(matrix, vector) {
+        return [
+            matrix[0] * vector[0] + matrix[4] * vector[1] + matrix[8] * vector[2] + matrix[12] * vector[3],
+            matrix[1] * vector[0] + matrix[5] * vector[1] + matrix[9] * vector[2] + matrix[13] * vector[3],
+            matrix[2] * vector[0] + matrix[6] * vector[1] + matrix[10] * vector[2] + matrix[14] * vector[3],
+            matrix[3] * vector[0] + matrix[7] * vector[1] + matrix[11] * vector[2] + matrix[15] * vector[3]
+        ];
+    }
+
+    /**
+     * Multiply 3x3 matrix by 3D vector
+     * @param {number[]} matrix - 3x3 matrix
+     * @param {number[]} vector - 3D vector
+     * @returns {number[]} Transformed vector
+     */
+    static multiplyMatrix3Vector(matrix, vector) {
+        return [
+            matrix[0] * vector[0] + matrix[3] * vector[1] + matrix[6] * vector[2],
+            matrix[1] * vector[0] + matrix[4] * vector[1] + matrix[7] * vector[2],
+            matrix[2] * vector[0] + matrix[5] * vector[1] + matrix[8] * vector[2]
+        ];
+    }
+
+    /**
+     * Invert 3x3 matrix (for normal transformation)
+     * @param {number[]} matrix - 4x4 matrix
+     * @returns {number[]} Inverted 3x3 matrix
+     */
+    static invertMatrix3x3(matrix) {
+        // Extract 3x3 part from 4x4 matrix
+        const m = [
+            matrix[0], matrix[1], matrix[2],
+            matrix[4], matrix[5], matrix[6],
+            matrix[8], matrix[9], matrix[10]
+        ];
+
+        const det = m[0] * (m[4] * m[8] - m[7] * m[5]) -
+                   m[1] * (m[3] * m[8] - m[6] * m[5]) +
+                   m[2] * (m[3] * m[7] - m[6] * m[4]);
+
+        if (Math.abs(det) < 1e-10) {
+            // Return identity if matrix is not invertible
+            return [1, 0, 0, 0, 1, 0, 0, 0, 1];
+        }
+
+        const invDet = 1 / det;
+
+        return [
+            (m[4] * m[8] - m[7] * m[5]) * invDet,
+            (m[2] * m[7] - m[1] * m[8]) * invDet,
+            (m[1] * m[5] - m[2] * m[4]) * invDet,
+            (m[6] * m[5] - m[3] * m[8]) * invDet,
+            (m[0] * m[8] - m[2] * m[6]) * invDet,
+            (m[2] * m[3] - m[0] * m[5]) * invDet,
+            (m[3] * m[7] - m[6] * m[4]) * invDet,
+            (m[1] * m[6] - m[0] * m[7]) * invDet,
+            (m[0] * m[4] - m[1] * m[3]) * invDet
+        ];
+    }
 }
