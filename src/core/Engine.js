@@ -274,52 +274,107 @@ export class Engine {
             console.log('Loading rubber duck model...');
             const modelData = await modelLoader.loadModel('models/Rubber_Duck.gltf');
 
-            // Create geometries from all meshes in the model
-            const geometries = GeometryGenerator.createAllFromModel(modelData, {
-                scale: [2, 2, 2], // Scale up the model
-                center: true,     // Center the model at origin
-                flipY: false      // Don't flip Y coordinates
-            });
+            // Process all nodes in the default scene to handle proper transformations
+            const defaultScene = modelData.scenes[modelData.defaultScene || 0];
+            const processedNodes = new Set();
 
-            // Create scene objects for each geometry
-            for (let i = 0; i < geometries.length; i++) {
-                const geometry = geometries[i];
-                const mesh = new Mesh(this.renderer.gl, geometry);
+            // Recursive function to process nodes and their children
+            const processNode = (nodeIndex, parentTransform = null) => {
+                if (processedNodes.has(nodeIndex)) return;
+                processedNodes.add(nodeIndex);
 
-                // Create material based on model material or use default
-                let material;
-                if (geometry.materialIndex !== null &&
-                    modelData.materials &&
-                    modelData.materials[geometry.materialIndex]) {
+                const node = modelData.nodes[nodeIndex];
+                if (!node) return;
 
-                    const modelMaterial = modelData.materials[geometry.materialIndex];
-                    material = MaterialLibrary.createBasic(
-                        modelMaterial.color.slice(0, 3), // RGB only
-                        modelMaterial.color[3] || 1.0    // Alpha
-                    );
+                // Calculate node's world transform
+                const nodeTranslation = node.translation || [0, 0, 0];
+                const nodeRotation = node.rotation || [0, 0, 0, 1]; // quaternion [x, y, z, w]
+                const nodeScale = node.scale || [1, 1, 1];
 
-                    // Apply texture if available
-                    if (modelMaterial.textures.baseColor) {
-                        // TODO: Create WebGL texture from model texture data
-                        // material.setTexture(webglTexture);
+                // If node has a mesh, create scene object for it
+                if (node.mesh !== null && node.mesh !== undefined) {
+                    const mesh = modelData.meshes[node.mesh];
+
+                    // Process each primitive in the mesh
+                    for (let primitiveIndex = 0; primitiveIndex < mesh.primitives.length; primitiveIndex++) {
+                        const geometry = GeometryGenerator.createFromModel(modelData, {
+                            meshIndex: node.mesh,
+                            primitiveIndex: primitiveIndex,
+                            scale: [1, 1, 1], // Don't scale here, we'll use transform
+                            center: false,    // Don't center, preserve original positions
+                            flipY: false
+                        });
+
+                        const webglMesh = new Mesh(this.renderer.gl, geometry);
+
+                        // Create material based on model material or use default
+                        let material;
+                        if (geometry.materialIndex !== null &&
+                            modelData.materials &&
+                            modelData.materials[geometry.materialIndex]) {
+
+                            const modelMaterial = modelData.materials[geometry.materialIndex];
+                            material = MaterialLibrary.createBasic(
+                                modelMaterial.color.slice(0, 3), // RGB only
+                                modelMaterial.color[3] || 1.0    // Alpha
+                            );
+
+                            // Apply texture if available
+                            if (modelMaterial.textures.baseColor) {
+                                const textureData = modelMaterial.textures.baseColor;
+                                if (textureData.image) {
+                                    // Create WebGL texture from loaded image data
+                                    const webglTexture = this.createWebGLTexture(this.renderer.gl, textureData.image, textureData.sampler);
+                                    material.setTexture(webglTexture);
+                                }
+                            }
+                        } else {
+                            // Use default yellow material for rubber duck
+                            material = MaterialLibrary.createBasic([1.0, 0.8, 0.2]);
+                        }
+
+                        // Convert quaternion rotation to Euler angles for Transform
+                        const [qx, qy, qz, qw] = nodeRotation;
+                        const eulerRotation = this.quaternionToEuler(qx, qy, qz, qw);
+
+                        const modelObject = new SceneObject({
+                            name: `${node.name || 'Node'}_${nodeIndex}_${primitiveIndex}`,
+                            mesh: webglMesh,
+                            material: material,
+                            transform: new Transform({
+                                position: [
+                                    nodeTranslation[0],
+                                    nodeTranslation[1] + 4, // Lift the model up
+                                    nodeTranslation[2]
+                                ],
+                                rotation: [
+                                    eulerRotation[0],
+                                    eulerRotation[1] + Math.PI, // Rotate 180 degrees around Y
+                                    eulerRotation[2]
+                                ],
+                                scale: [
+                                    nodeScale[0] * 10, // Scale up the model
+                                    nodeScale[1] * 10,
+                                    nodeScale[2] * 10
+                                ]
+                            })
+                        });
+
+                        startScene.addObject(modelObject);
                     }
-                } else {
-                    // Use default yellow material for rubber duck
-                    material = MaterialLibrary.createBasic([1.0, 0.8, 0.2]);
                 }
 
-                const modelObject = new SceneObject({
-                    name: `rubber_duck_${i}`,
-                    mesh: mesh,
-                    material: material,
-                    transform: new Transform({
-                        position: [0, 4, 0],
-                        rotation: [0, Math.PI, 0],
-                        scale: [2, 2, 2]
-                    })
-                });
+                // Process child nodes
+                if (node.children) {
+                    for (const childIndex of node.children) {
+                        processNode(childIndex, null); // Simplified - don't pass parent transform for now
+                    }
+                }
+            };
 
-                startScene.addObject(modelObject);
+            // Process all root nodes in the default scene
+            for (const nodeIndex of defaultScene.nodes) {
+                processNode(nodeIndex);
             }
 
             console.log('Rubber duck model loaded successfully');
@@ -343,6 +398,72 @@ export class Engine {
         }
 
         // console.log('Start scene created', startScene.getAllObjects());
+    }
+
+    /**
+     * Create WebGL texture from image data
+     * @param {WebGLRenderingContext} gl - WebGL context
+     * @param {HTMLImageElement} image - Image element with loaded texture data
+     * @param {Object} sampler - Texture sampler settings
+     * @returns {WebGLTexture} Created WebGL texture
+     */
+    createWebGLTexture(gl, image, sampler = {}) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        // Set texture parameters based on sampler settings
+        const magFilter = sampler.magFilter || gl.LINEAR;
+        const minFilter = sampler.minFilter || gl.LINEAR_MIPMAP_LINEAR;
+        const wrapS = sampler.wrapS || gl.REPEAT;
+        const wrapT = sampler.wrapT || gl.REPEAT;
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magFilter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
+
+        // Upload image data to texture
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+        // Generate mipmaps if using mipmap filtering
+        if (minFilter === gl.LINEAR_MIPMAP_LINEAR || minFilter === gl.LINEAR_MIPMAP_NEAREST ||
+            minFilter === gl.NEAREST_MIPMAP_LINEAR || minFilter === gl.NEAREST_MIPMAP_NEAREST) {
+            gl.generateMipmap(gl.TEXTURE_2D);
+        }
+
+        console.log('Created WebGL texture from image:', image.src || 'data URL');
+        return texture;
+    }
+
+    /**
+     * Convert quaternion to Euler angles
+     * @param {number} x - Quaternion x component
+     * @param {number} y - Quaternion y component
+     * @param {number} z - Quaternion z component
+     * @param {number} w - Quaternion w component
+     * @returns {number[]} Euler angles [x, y, z] in radians
+     */
+    quaternionToEuler(x, y, z, w) {
+        // Roll (x-axis rotation)
+        const sinr_cosp = 2 * (w * x + y * z);
+        const cosr_cosp = 1 - 2 * (x * x + y * y);
+        const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+        // Pitch (y-axis rotation)
+        const sinp = 2 * (w * y - z * x);
+        let pitch;
+        if (Math.abs(sinp) >= 1) {
+            pitch = Math.sign(sinp) * Math.PI / 2; // Use 90 degrees if out of range
+        } else {
+            pitch = Math.asin(sinp);
+        }
+
+        // Yaw (z-axis rotation)
+        const siny_cosp = 2 * (w * z + x * y);
+        const cosy_cosp = 1 - 2 * (y * y + z * z);
+        const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+        return [roll, pitch, yaw];
     }
 
     /**
