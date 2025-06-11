@@ -130,8 +130,8 @@
 	"images":[
 		{
 			"mimeType":"image/jpeg",
-			"name":"RubberDuck_Texture",
-			"uri":"Texture/RubberDuck_Texture.jpg"
+			"name":"Rubber_Duck",
+			"uri":"Rubber_Duck.jpg"
 		}
 	],
 	"accessors":[
@@ -321,7 +321,7 @@
 	"buffers":[
 		{
 			"byteLength":49840,
-			"uri":"Rubbish_Duck.bin"
+			"uri":"Rubber_Duck.bin"
 		}
 	]
 }

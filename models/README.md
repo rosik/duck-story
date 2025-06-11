@@ -10,7 +10,7 @@ This directory contains 3D model files for the WebGL project.
 ## Current Models
 
 ### Rubber Duck
-- **File**: `rubber_duck.gltf` (placeholder - copy from `../gltf/Rubber_Duck.gltf`)
+- **File**: `models/Rubber_Duck.gltf`
 - **Description**: A yellow rubber duck model for testing
 - **Usage**: Perfect for testing the model loading system
 - **Materials**: Uses PBR materials with base color texture

@@ -56,6 +56,11 @@ export class Mesh {
         this.indexCount = this.indices.length;
         this.primitiveType = geometry.primitiveType || this.gl.TRIANGLES;
 
+        // DEBUG LOGGING
+        console.log('DEBUG: Mesh setGeometry - geometry.primitiveType:', geometry.primitiveType);
+        console.log('DEBUG: Mesh setGeometry - this.primitiveType:', this.primitiveType);
+        console.log('DEBUG: Mesh setGeometry - gl.TRIANGLES constant:', this.gl.TRIANGLES);
+
         // Generate missing data
         if (this.normals.length === 0 && this.indices.length > 0) {
             this.generateNormals();
@@ -567,17 +572,22 @@ export class GeometryGenerator {
             this.centerGeometry(geometry);
         }
 
-        // Set primitive type based on glTF mode
+        // Set primitive type based on glTF mode - use WebGL constants, not strings
+        console.log('DEBUG: Processing primitive mode:', primitive.mode);
+
+        // Get WebGL context constants - we need to pass gl context or use hardcoded values
+        // Using hardcoded WebGL constants since we don't have gl context here
         switch (primitive.mode) {
-            case 0: geometry.primitiveType = 'POINTS'; break;
-            case 1: geometry.primitiveType = 'LINES'; break;
-            case 2: geometry.primitiveType = 'LINE_LOOP'; break;
-            case 3: geometry.primitiveType = 'LINE_STRIP'; break;
-            case 4: geometry.primitiveType = 'TRIANGLES'; break;
-            case 5: geometry.primitiveType = 'TRIANGLE_STRIP'; break;
-            case 6: geometry.primitiveType = 'TRIANGLE_FAN'; break;
-            default: geometry.primitiveType = 'TRIANGLES';
+            case 0: geometry.primitiveType = 0; break;    // gl.POINTS
+            case 1: geometry.primitiveType = 1; break;    // gl.LINES
+            case 2: geometry.primitiveType = 2; break;    // gl.LINE_LOOP
+            case 3: geometry.primitiveType = 3; break;    // gl.LINE_STRIP
+            case 4: geometry.primitiveType = 4; break;    // gl.TRIANGLES
+            case 5: geometry.primitiveType = 5; break;    // gl.TRIANGLE_STRIP
+            case 6: geometry.primitiveType = 6; break;    // gl.TRIANGLE_FAN
+            default: geometry.primitiveType = 4;          // gl.TRIANGLES (default)
         }
+        console.log('DEBUG: Set geometry.primitiveType to:', geometry.primitiveType, '(WebGL constant)');
 
         return geometry;
     }

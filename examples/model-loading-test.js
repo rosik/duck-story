@@ -15,7 +15,7 @@ async function testModelLoading() {
     try {
         // Test 1: Load the rubber duck model
         console.log('\n1. Loading rubber duck model...');
-        const modelData = await modelLoader.loadModel('models/rubber_duck.gltf');
+        const modelData = await modelLoader.loadModel('models/Rubber_Duck.gltf');
 
         console.log('✓ Model loaded successfully');
         console.log('  - Scenes:', modelData.scenes.length);
@@ -56,7 +56,7 @@ async function testModelLoading() {
 
         // Test 4: Test loading progress
         console.log('\n4. Checking loading progress...');
-        const progress = modelLoader.getLoadingProgress('models/rubber_duck.gltf');
+        const progress = modelLoader.getLoadingProgress('models/Rubber_Duck.gltf');
         console.log('✓ Loading progress:', progress);
 
         // Test 5: Test model materials
@@ -123,9 +123,9 @@ async function testPerformance() {
         console.log('\n1. Loading model 3 times (testing cache)...');
 
         const promises = [
-            modelLoader.loadModel('models/rubber_duck.gltf'),
-            modelLoader.loadModel('models/rubber_duck.gltf'),
-            modelLoader.loadModel('models/rubber_duck.gltf')
+            modelLoader.loadModel('models/Rubber_Duck.gltf'),
+            modelLoader.loadModel('models/Rubber_Duck.gltf'),
+            modelLoader.loadModel('models/Rubber_Duck.gltf')
         ];
 
         const results = await Promise.all(promises);

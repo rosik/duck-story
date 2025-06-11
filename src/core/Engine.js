@@ -272,7 +272,7 @@ export class Engine {
         // Load and add rubber duck model
         try {
             console.log('Loading rubber duck model...');
-            const modelData = await modelLoader.loadModel('gltf/Rubber_Duck.gltf');
+            const modelData = await modelLoader.loadModel('models/Rubber_Duck.gltf');
 
             // Create geometries from all meshes in the model
             const geometries = GeometryGenerator.createAllFromModel(modelData, {
@@ -313,9 +313,9 @@ export class Engine {
                     mesh: mesh,
                     material: material,
                     transform: new Transform({
-                        position: [0, 0, 0],
-                        rotation: [0, 0, 0],
-                        scale: [1, 1, 1]
+                        position: [0, 4, 0],
+                        rotation: [0, Math.PI, 0],
+                        scale: [2, 2, 2]
                     })
                 });
 
