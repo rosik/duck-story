@@ -13,6 +13,8 @@ import { Mesh, GeometryGenerator } from '../rendering/Mesh.js';
 import { MaterialLibrary } from '../rendering/Material.js';
 import { SceneObject } from '../scene/SceneObject.js';
 import { Transform } from '../scene/Transform.js';
+import { Animator } from '../animation/Animator.js';
+import { Tween } from '../animation/Tween.js';
 
 /**
  * Main engine orchestrator
@@ -30,6 +32,7 @@ export class Engine {
         this.renderer = null;
         this.inputManager = null;
         this.uiManager = null;
+        this.animator = new Animator();
 
         // Device and performance
         this.deviceInfo = null;
@@ -165,6 +168,11 @@ export class Engine {
             this.uiManager.update(deltaTime);
         }
 
+        // Update animator
+        if (this.animator) {
+            this.animator.update(deltaTime);
+        }
+
         // Process queued events
         eventBus.processQueue();
     }
@@ -243,7 +251,7 @@ export class Engine {
             cloudCount: 80,
             windSpeed: { x: 0, y: 0, z: 7 },
             groundRadius: 100,
-            height: 5,
+            height: 20,
         });
         clouds.init(this.renderer.gl);
         startScene.addObject(clouds);
@@ -275,6 +283,66 @@ export class Engine {
         startScene.addObject(box);
 
         // console.log('Start scene created', startScene.getAllObjects());
+    }
+
+    /**
+     * Animate camera to game position with smooth movement
+     */
+    animateCameraToGamePosition() {
+        const currentScene = this.stateManager.getCurrentScene();
+        if (!currentScene || !currentScene.camera) {
+            console.warn('No camera available for animation');
+            return;
+        }
+
+        const camera = currentScene.camera;
+        const targetPosition = { x: -45, y: 10, z: -55 };
+        const targetLookAt = { x: 0, y: 0, z: 0 };
+        const animationDuration = 2.5; // 2.5 seconds for smooth movement
+
+        // Disable camera sway during animation
+        camera.setSwayEnabled(false);
+
+        // Create position animation object to track intermediate values
+        const positionProxy = {
+            x: camera.basePosition.x,
+            y: camera.basePosition.y,
+            z: camera.basePosition.z
+        };
+
+        // Create target animation object to track intermediate values
+        const targetProxy = {
+            x: camera.baseTarget.x,
+            y: camera.baseTarget.y,
+            z: camera.baseTarget.z
+        };
+
+        // Animate camera position
+        this.animator.to(positionProxy, targetPosition, animationDuration, {
+            easing: Tween.Easing.cubicInOut,
+            onUpdate: (target) => {
+                // Update camera position during animation
+                camera.setPosition(target.x, target.y, target.z);
+            },
+            onComplete: () => {
+                console.log('Camera position animation complete');
+                // Re-enable camera sway after animation
+                // camera.setSwayEnabled(true);
+                // Emit game start event
+                eventBus.emit('game.start.requested');
+            }
+        });
+
+        // Animate camera target (what it's looking at)
+        this.animator.to(targetProxy, targetLookAt, animationDuration, {
+            easing: Tween.Easing.cubicInOut,
+            onUpdate: (target) => {
+                // Update camera target during animation
+                camera.setTarget(target.x, target.y, target.z);
+            }
+        });
+
+        console.log(`Camera animation started: moving to position (${targetPosition.x}, ${targetPosition.y}, ${targetPosition.z})`);
     }
 
     /**
@@ -323,9 +391,8 @@ export class Engine {
 
         // Start button click
         eventBus.on('ui.start.clicked', () => {
-            console.log('Start button clicked');
-            // TODO: Transition to game scene
-            eventBus.emit('game.start.requested');
+            console.log('Start button clicked - initiating smooth camera movement');
+            this.animateCameraToGamePosition();
         });
 
         // Error handling
@@ -428,6 +495,10 @@ export class Engine {
 
         if (this.uiManager) {
             this.uiManager.destroy();
+        }
+
+        if (this.animator) {
+            this.animator.stopAll();
         }
 
         // Clear event bus
