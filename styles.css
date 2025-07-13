@@ -1,0 +1,210 @@
+/* Main styles for Rubber Duck's Cloudy Adventure */
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #5CCCFF; /* Light blue to match sky */
+    font-family: Arial, sans-serif;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* UI Elements */
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.ui-button {
+    pointer-events: auto;
+    position: absolute;
+    padding: 15px 30px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #333;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.ui-button:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#startButton {
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Loading Screen */
+
+#loadingScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #333;
+    border-top: 3px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Educational UI Elements */
+
+.ui-container {
+    pointer-events: none;
+}
+
+.ui-number {
+    font-weight: bold;
+    text-align: center;
+}
+
+.ui-color {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+}
+
+.ui-feedback {
+    font-weight: bold;
+    text-align: center;
+}
+
+.ui-cause-effect {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Responsive Styles */
+
+@media (max-width: 768px) {
+    .ui-button {
+        padding: 12px 24px;
+        font-size: 16px;
+    }
+
+    #startButton {
+        bottom: 30px;
+    }
+
+    .ui-number.ui-number-large {
+        font-size: 36px !important;
+    }
+
+    .ui-number.ui-number-medium {
+        font-size: 24px !important;
+    }
+
+    .ui-feedback {
+        font-size: 18px !important;
+        padding: 10px 20px !important;
+    }
+}
+
+/* Scene-specific styles */
+
+/* Calm Pond Scene */
+.water-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0);
+    pointer-events: none;
+    animation: ripple 2s ease-out forwards;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Up in the Clouds Scene */
+.cloud-count {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Rain Shower Scene */
+.rain-intensity-control {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    pointer-events: auto;
+}
+
+/* Rainbow Bridge Scene */
+.color-display {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
