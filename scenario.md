@@ -8,31 +8,36 @@ Sunny the duck loves floating in his little pond under the big sky. One day, a s
 
 ## Scenes/Scenarios
 
-### The Calm Pond (Current Implementation)
+### 0 - Start scene (Current Implementation)
 
 Sunny floats peacefully in his pond (static duck model)
 Clouds move slowly across the sky (existing cloud system)
 Player clicks "START" to begin the adventure (existing camera zoom)
 
-### Up in the Clouds
+### 1 - The Calm Pond
+
+The dialogue bubble is displayed over the duck saying: "Привет, путешественник! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли."
+The clouds become clickable. On mouse over the cloud should be decorated with dark border. Clicking on the cloud makes it disappear. After the player clicks 10 clouds, the duck says: "Теперь мне слишком жарко!"
+
+### 2 - Up in the Clouds
 
 Camera shows Sunny floating among the clouds
 Simple interaction: Tap clouds to make them change shape
 Educational element: Count the clouds (1-5) as they pass by
 
-### The Rain Shower
+### 3 - The Rain Shower
 
 Darker skybox with raindrops (could be simple particle effects)
 Interaction: Tap Sunny to make him quack happily in the rain
 Learning: Cause/effect - rain makes puddles below
 
-### The Rainbow Bridge
+### 4 - The Rainbow Bridge
 
 Skybox changes to show a rainbow
 Interaction: Drag finger to help Sunny slide down the rainbow
 Color recognition: Name the rainbow colors as Sunny passes them
 
-### Back Home
+### 5 - Back Home
 
 Camera returns to original view (reverse of START animation)
 Sunny is back in his pond, story comes full circle
