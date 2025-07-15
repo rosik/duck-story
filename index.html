@@ -56,6 +56,54 @@
             transform: translateX(-50%);
         }
 
+        /* Dialogue bubble styles */
+        #dialogueBubble {
+            pointer-events: none;
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 150;
+            transform: translate(-50%, -100%);
+            margin-top: -20px;
+        }
+
+        #dialogueBubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-top-color: #333;
+            border-bottom: 0;
+            margin-left: -10px;
+        }
+
+        /* Cloud counter styles */
+        #cloudCounter {
+            pointer-events: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            z-index: 150;
+        }
+
         #loadingScreen {
             position: absolute;
             top: 0;
@@ -95,6 +143,12 @@
             #startButton {
                 bottom: 30px;
             }
+
+            #dialogueBubble {
+                max-width: 250px;
+                font-size: 14px;
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -103,6 +157,8 @@
 
     <div id="ui-overlay">
         <button id="startButton" class="ui-button">START</button>
+        <div id="dialogueBubble"></div>
+        <div id="cloudCounter">Облака: 0/10</div>
     </div>
 
     <div id="loadingScreen">
@@ -129,6 +185,15 @@
         let sky, ground, cloudSystem, duck;
         let isInitialized = false;
         let isRunning = false;
+
+        // Game state variables
+        let clickedClouds = 0;
+        let dialogueVisible = false;
+        let dialogueBubbleElement;
+        let cloudCounterElement;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let hoveredCloud = null;
 
         // Initialize the scene
         async function init() {
@@ -220,6 +285,9 @@
 
             // Setup event listeners
             setupEventListeners();
+
+            // Initialize dialogue system
+            initDialogueSystem();
 
             // Hide loading screen
             document.getElementById('loadingScreen').style.display = 'none';
@@ -328,6 +396,8 @@
                 // Store original position for resetting
                 cloud.userData.originalPosition = cloud.position.clone();
                 cloud.userData.outOfScene = false;
+                cloud.userData.isClickable = true;
+                cloud.userData.originalMaterial = cloud.material.clone();
 
                 cloudSystem.add(cloud);
             }
@@ -475,8 +545,48 @@
             // Update cloud system
             cloudSystem.update(deltaTime);
 
+            // Check for cloud hover
+            checkCloudHover();
+
+            // Update dialogue position
+            updateDialoguePosition();
+
             // Render scene
             renderer.render(scene, camera);
+        }
+
+        // Check for cloud hover
+        function checkCloudHover() {
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the picking ray
+            const intersects = raycaster.intersectObjects(cloudSystem.children);
+
+            // Reset previously hovered cloud
+            if (hoveredCloud && (!intersects.length || intersects[0].object !== hoveredCloud)) {
+                // Only reset if the cloud still exists and hasn't been clicked
+                if (hoveredCloud.parent && hoveredCloud.userData.isClickable) {
+                    hoveredCloud.material = hoveredCloud.userData.originalMaterial.clone();
+                }
+                hoveredCloud = null;
+                document.body.style.cursor = 'default';
+            }
+
+            // Set new hovered cloud
+            if (intersects.length > 0) {
+                const cloud = intersects[0].object;
+                if (cloud.userData.isClickable) {
+                    hoveredCloud = cloud;
+
+                    // Apply hover effect (dark border)
+                    const hoverMaterial = cloud.userData.originalMaterial.clone();
+                    hoverMaterial.emissive = new THREE.Color(0x333333);
+                    cloud.material = hoverMaterial;
+
+                    document.body.style.cursor = 'pointer';
+                }
+            }
         }
 
         // Setup event listeners
@@ -486,10 +596,103 @@
             startButton.addEventListener('click', () => {
                 console.log('Start button clicked - initiating camera animation');
                 animateCameraToGamePosition();
+
+                // Show dialogue after camera animation
+                setTimeout(() => {
+                    showDialogue("Привет, путешественник! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
+                }, 1000);
             });
 
             // Window resize
             window.addEventListener('resize', onWindowResize);
+
+            // Mouse move for hover effect
+            window.addEventListener('mousemove', (event) => {
+                // Calculate mouse position in normalized device coordinates
+                // (-1 to +1) for both components
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            // Mouse click for cloud interaction
+            window.addEventListener('click', onMouseClick);
+        }
+
+        // Handle mouse click
+        function onMouseClick(event) {
+            // Only process clicks if the game is running
+            if (!isRunning) return;
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the picking ray
+            const intersects = raycaster.intersectObjects(cloudSystem.children);
+
+            if (intersects.length > 0) {
+                const cloud = intersects[0].object;
+
+                // Only process clickable clouds
+                if (cloud.userData.isClickable) {
+                    // Make cloud disappear
+                    cloud.visible = false;
+                    cloud.userData.isClickable = false;
+
+                    // Increment counter
+                    clickedClouds++;
+                    updateCloudCounter();
+
+                    // Check if we've reached 10 clouds
+                    if (clickedClouds === 10) {
+                        showDialogue("Теперь мне слишком жарко!");
+                    }
+                }
+            }
+        }
+
+        // Initialize dialogue system
+        function initDialogueSystem() {
+            dialogueBubbleElement = document.getElementById('dialogueBubble');
+            cloudCounterElement = document.getElementById('cloudCounter');
+        }
+
+        // Show dialogue
+        function showDialogue(text) {
+            dialogueBubbleElement.textContent = text;
+            dialogueBubbleElement.style.opacity = '1';
+            dialogueVisible = true;
+
+            // Position the dialogue bubble above the duck
+            updateDialoguePosition();
+        }
+
+        // Hide dialogue
+        function hideDialogue() {
+            dialogueBubbleElement.style.opacity = '0';
+            dialogueVisible = false;
+        }
+
+        // Update dialogue position
+        function updateDialoguePosition() {
+            if (!dialogueVisible || !duck) return;
+
+            // Get duck position in screen space
+            const duckPosition = new THREE.Vector3(0, 5, 0); // Approximate position above duck
+            const screenPosition = duckPosition.clone();
+            screenPosition.project(camera);
+
+            // Convert to CSS coordinates
+            const x = (screenPosition.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(screenPosition.y * 0.5) + 0.5) * window.innerHeight;
+
+            // Update dialogue bubble position
+            dialogueBubbleElement.style.left = `${x}px`;
+            dialogueBubbleElement.style.top = `${y}px`;
+        }
+
+        // Update cloud counter
+        function updateCloudCounter() {
+            cloudCounterElement.textContent = `Облака: ${clickedClouds}/10`;
         }
 
         // Handle window resize
