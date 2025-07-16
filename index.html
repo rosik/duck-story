@@ -90,6 +90,7 @@
 
         /* Cloud counter styles */
         #cloudCounter {
+            display: none; /* Hide the cloud counter since we're using the dialogue bubble instead */
             pointer-events: none;
             position: absolute;
             top: 20px;
@@ -244,6 +245,7 @@
                 // throw "Aaa"
                 duck = await loadDuckModel();
                 duck.scale.set(6, 6, 6);
+                duck.position.set(0, -1, 0);
                 scene.add(duck);
                 console.log('Duck model loaded successfully');
             } catch (error) {
@@ -400,7 +402,7 @@
                 // Store original position for resetting
                 cloud.userData.originalPosition = cloud.position.clone();
                 cloud.userData.outOfScene = false;
-                cloud.userData.isClickable = true;
+                cloud.userData.isClickable = false; // Initially not clickable
                 cloud.userData.originalMaterial = cloud.material.clone();
 
                 cloudSystem.add(cloud);
@@ -433,6 +435,12 @@
                     }
                 });
             };
+
+            cloudSystem.setClickable = function(value) {
+                this.children.forEach(cloud => {
+                    cloud.userData.isClickable = value;
+                });
+            }
 
             return cloudSystem;
         }
@@ -503,7 +511,7 @@
             camera.userData.basePosition = camera.position.clone();
             camera.userData.baseTarget = new THREE.Vector3(0, 1, 0);
             camera.userData.swayEnabled = true;
-            camera.userData.swayAmplitude = 0.02;
+            camera.userData.swayAmplitude = 0.2;
             camera.userData.swaySpeed = 0.5;
             camera.userData.swayTime = 0;
 
@@ -603,12 +611,16 @@
             // START button click
             const startButton = document.getElementById('startButton');
             startButton.addEventListener('click', () => {
-                console.log('Start button clicked - initiating camera animation');
+                // Hide the start button after clicking
+                startButton.style.display = 'none';
                 animateCameraToGamePosition();
+
+                // Make clouds clickable after start button is clicked
+                cloudSystem.setClickable(true);
 
                 // Show dialogue after camera animation
                 setTimeout(() => {
-                    showDialogue("Привет, путешественник! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
+                    showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
                 }, 1000);
             });
 
@@ -660,6 +672,10 @@
                     if (clickedClouds === 10) {
                         showDialogue("Теперь мне слишком жарко!");
                         console.log("All clouds clicked! Showing final message.");
+                        cloudSystem.setClickable(false);
+                    } else {
+                        // Update the dialogue bubble with the current count
+                        updateCloudCounter();
                     }
                 }
             }
@@ -692,7 +708,7 @@
             if (!dialogueVisible || !duck) return;
 
             // Get duck position in screen space
-            const duckPosition = new THREE.Vector3(0, 5, 0); // Approximate position above duck
+            const duckPosition = new THREE.Vector3(0, 7.5, 0); // Approximate position above duck
             const screenPosition = duckPosition.clone();
             screenPosition.project(camera);
 
@@ -707,7 +723,10 @@
 
         // Update cloud counter
         function updateCloudCounter() {
-            cloudCounterElement.textContent = `Облака: ${clickedClouds}/10`;
+            // Update the dialogue bubble text instead of a separate counter
+            if (dialogueVisible) {
+                showDialogue(`Нажимай на облака: ${clickedClouds} из 10`);
+            }
         }
 
         // Handle window resize
@@ -727,8 +746,8 @@
             camera.userData.swayEnabled = false;
 
             // Target position and look-at
-            const targetPosition = new THREE.Vector3(-45, 10, -55);
-            const targetLookAt = new THREE.Vector3(0, 0, 0);
+            const targetPosition = new THREE.Vector3(-25, 4, -35);
+            const targetLookAt = new THREE.Vector3(0, 3, 0);
 
             // Store original values
             const startPosition = camera.position.clone();
