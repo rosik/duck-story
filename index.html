@@ -406,7 +406,7 @@
 
             cloudSystem.userData.windSpeed = { x: 0, y: 0, z: 7 };
             cloudSystem.userData.r1 = 80;
-            cloudSystem.userData.r2 = 90;
+            cloudSystem.userData.r2 = 110;
             cloudSystem.userData.h1 = 20;
             cloudSystem.userData.dh = 10;
 
@@ -542,7 +542,7 @@
             );
 
             // Set initial position
-            camera.position.set(-60, 50, -80);
+            camera.position.set(-100, 50, -100);
             camera.lookAt(0, 1, 0);
 
             // Store original position for swaying
@@ -690,28 +690,20 @@
             // Calculate objects intersecting the picking ray
             const intersects = raycaster.intersectObjects(cloudSystem.children, false);
 
-            console.log(`Click detected, found ${intersects.length} intersections`);
-
             if (intersects.length > 0) {
                 const cloud = intersects[0].object;
-                console.log(`Clicked on cloud: ${cloud.name}, clickable: ${cloud.userData.isClickable}, visible: ${cloud.visible}`);
 
                 // Only process clickable clouds
                 if (cloud.userData.isClickable && cloud.visible) {
                     // Make cloud disappear
-                    cloud.visible = false;
-                    cloud.userData.isClickable = false;
+                    cloudSystem.remove(cloud);
 
                     // Increment counter
                     clickedClouds++;
-                    updateCloudCounter();
-
-                    console.log(`Cloud clicked! Count: ${clickedClouds}/10`);
 
                     // Check if we've reached 10 clouds
                     if (clickedClouds === 10) {
                         showDialogue("Теперь мне слишком жарко! Продолжение следует.");
-                        console.log("All clouds clicked! Showing final message.");
                         cloudSystem.setClickable(false);
                         const targetPosition = new THREE.Vector3(10, 4, -35);
                         const targetLookAt = new THREE.Vector3(0, 3, 0);
