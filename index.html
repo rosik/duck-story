@@ -398,10 +398,11 @@
             const geometry = new THREE.SphereGeometry(2, 16, 16);
             const material = new THREE.MeshStandardMaterial({
                 color: 0xFFFFFF,
-                roughness: 0.0,
-                metalness: 0.0,
+                emissive: 0xAAAAAA,
+                roughness: 0.5,
+                metalness: 0,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.7
             });
 
             cloudSystem.userData.windSpeed = { x: 0, y: 0, z: 7 };
@@ -437,6 +438,7 @@
                 cloud.userData.outOfScene = false;
                 cloud.userData.isClickable = false; // Initially not clickable
                 cloud.userData.originalMaterial = cloud.material.clone();
+                cloud.castShadow = true;
 
                 cloudSystem.add(cloud);
             }
