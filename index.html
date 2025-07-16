@@ -157,7 +157,7 @@
     <canvas id="gameCanvas"></canvas>
 
     <div id="ui-overlay">
-        <button id="startButton" class="ui-button">START</button>
+        <button id="startButton" class="ui-button">ИГРАТЬ</button>
         <div id="dialogueBubble"></div>
         <div id="cloudCounter">Облака: 0/10</div>
     </div>
@@ -225,7 +225,7 @@
             scene.add(ground);
 
             // Create cloud system
-            cloudSystem = createCloudSystem(80); // 80 clouds as in original
+            cloudSystem = createCloudSystem(50);
             scene.add(cloudSystem);
 
             // Add ambient light
@@ -337,29 +337,55 @@
             return sky;
         }
 
-        // Create ground plane
+        // Create ground plane with pond
         function createGround() {
-            // Create a large circle geometry
-            const radius = 100;
+            // Create a group to hold ground and pond
+            const groundGroup = new THREE.Group();
+
+            // Create a large circle geometry for the ground
+            const groundRadius = 100;
             const segments = 50;
-            const geometry = new THREE.CircleGeometry(radius, segments);
+            const groundGeometry = new THREE.CircleGeometry(groundRadius, segments);
 
             // Rotate to be horizontal (XZ plane)
-            geometry.rotateX(-Math.PI / 2);
+            groundGeometry.rotateX(-Math.PI / 2);
 
             // Create green material
-            const material = new THREE.MeshStandardMaterial({
+            const groundMaterial = new THREE.MeshStandardMaterial({
                 color: 0x6AE86F,
                 roughness: 0.8,
                 metalness: 0.2
             });
 
-            // Create mesh and add to scene
-            const ground = new THREE.Mesh(geometry, material);
-            ground.position.y = 0; // Slightly below origin
+            // Create mesh for the ground
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.position.y = 0;
             ground.receiveShadow = true;
+            groundGroup.add(ground);
 
-            return ground;
+            // Create a circle geometry for the pond
+            const pondRadius = 15;
+            const pondGeometry = new THREE.CircleGeometry(pondRadius, segments);
+
+            // Rotate to be horizontal (XZ plane)
+            pondGeometry.rotateX(-Math.PI / 2);
+
+            // Create water material with blue color
+            const pondMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A87E8, // Blue water color
+                roughness: 0.1,  // Smooth surface for water
+                metalness: 0.3,  // Slight reflection
+                transparent: true,
+                opacity: 0.8     // Slightly transparent
+            });
+
+            // Create mesh for the pond
+            const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+            pond.position.y = 0.05; // Slightly above the ground to prevent z-fighting
+            pond.receiveShadow = true;
+            groundGroup.add(pond);
+
+            return groundGroup;
         }
 
         // Create cloud system
@@ -369,7 +395,7 @@
 
             // Create cloud geometry and material
             // Use a sphere geometry for better click detection
-            const geometry = new THREE.SphereGeometry(2, 8, 8);
+            const geometry = new THREE.SphereGeometry(2, 16, 16);
             const material = new THREE.MeshStandardMaterial({
                 color: 0xFFFFFF,
                 roughness: 0.0,
@@ -377,6 +403,12 @@
                 transparent: true,
                 opacity: 0.8
             });
+
+            cloudSystem.userData.windSpeed = { x: 0, y: 0, z: 7 };
+            cloudSystem.userData.r1 = 80;
+            cloudSystem.userData.r2 = 90;
+            cloudSystem.userData.h1 = 20;
+            cloudSystem.userData.dh = 10;
 
             // Create individual clouds
             for (let i = 0; i < count; i++) {
@@ -386,18 +418,19 @@
                 cloud.name = `cloud-${i}`;
 
                 // Random position within a cylinder
-                const radius = 80 * Math.sqrt(Math.random()); // Reduced radius for better visibility
+                const radius = cloudSystem.userData.r2 * Math.sqrt(Math.random());
                 const theta = Math.random() * Math.PI * 2;
                 cloud.position.x = radius * Math.cos(theta);
                 cloud.position.z = radius * Math.sin(theta);
-                cloud.position.y = 20 + Math.random() * 10;
+                cloud.position.y = cloudSystem.userData.h1 + Math.random() * cloudSystem.userData.dh;
 
                 // Random scale - make clouds larger for easier clicking
-                const scale = 4 + Math.random() * 2;
-                cloud.scale.set(scale, scale * 0.7, scale);
-
-                // Random rotation
-                cloud.rotation.y = Math.random() * Math.PI * 2;
+                const basicSize = 4 + Math.random() * 2;
+                cloud.userData.dimensions = new THREE.Vector3(basicSize, basicSize * 0.7, basicSize);
+                cloud.setScale = function(scale) {
+                    this.scale.copy(this.userData.dimensions).multiplyScalar(scale);
+                };
+                cloud.setScale(1);
 
                 // Store original position for resetting
                 cloud.userData.originalPosition = cloud.position.clone();
@@ -410,7 +443,7 @@
 
             // Add update function to cloud system
             cloudSystem.update = function(deltaTime) {
-                const windSpeed = { x: 0, y: 0, z: 7 }; // Matches original
+                const windSpeed = this.userData.windSpeed;
 
                 // Update each cloud
                 this.children.forEach(cloud => {
@@ -425,13 +458,18 @@
                         cloud.position.z * cloud.position.z
                     );
 
-                    if (distanceFromCenter >= 100) {
+                    const r1 = cloudSystem.userData.r1;
+                    const r2 = cloudSystem.userData.r2;
+                    if (distanceFromCenter >= r2) {
                         // Reset cloud position
-                        const radius = 100;
-                        const theta = Math.random() * Math.PI * 2;
+                        const radius = r2;
+                        const theta = Math.random() * Math.PI;
                         cloud.position.x = radius * Math.cos(theta);
-                        cloud.position.z = radius * Math.sin(theta);
-                        cloud.position.y = 20 + Math.random() * 10;
+                        cloud.position.z = -radius * Math.sin(theta);
+                        cloud.position.y = cloudSystem.userData.h1 + Math.random() * cloudSystem.userData.dh;
+                    } else if (distanceFromCenter >= r1) {
+                        const scale = (r2-distanceFromCenter)/(r2-r1);
+                        cloud.setScale(scale);
                     }
                 });
             };
@@ -504,7 +542,7 @@
             );
 
             // Set initial position
-            camera.position.set(-90, 50, -110);
+            camera.position.set(-60, 50, -80);
             camera.lookAt(0, 1, 0);
 
             // Store original position for swaying
@@ -613,7 +651,9 @@
             startButton.addEventListener('click', () => {
                 // Hide the start button after clicking
                 startButton.style.display = 'none';
-                animateCameraToGamePosition();
+                const targetPosition = new THREE.Vector3(-25, 4, -35);
+                const targetLookAt = new THREE.Vector3(0, 3, 0);
+                animateCameraTo(targetPosition, targetLookAt);
 
                 // Make clouds clickable after start button is clicked
                 cloudSystem.setClickable(true);
@@ -670,9 +710,12 @@
 
                     // Check if we've reached 10 clouds
                     if (clickedClouds === 10) {
-                        showDialogue("Теперь мне слишком жарко!");
+                        showDialogue("Теперь мне слишком жарко! Продолжение следует.");
                         console.log("All clouds clicked! Showing final message.");
                         cloudSystem.setClickable(false);
+                        const targetPosition = new THREE.Vector3(10, 4, -35);
+                        const targetLookAt = new THREE.Vector3(0, 3, 0);
+                        animateCameraTo(targetPosition, targetLookAt);
                     } else {
                         // Update the dialogue bubble with the current count
                         updateCloudCounter();
@@ -708,7 +751,7 @@
             if (!dialogueVisible || !duck) return;
 
             // Get duck position in screen space
-            const duckPosition = new THREE.Vector3(0, 7.5, 0); // Approximate position above duck
+            const duckPosition = new THREE.Vector3(0, 6.5, 0); // Approximate position above duck
             const screenPosition = duckPosition.clone();
             screenPosition.project(camera);
 
@@ -741,13 +784,9 @@
         }
 
         // Animate camera to game position
-        function animateCameraToGamePosition() {
+        function animateCameraTo(targetPosition, targetLookAt) {
             // Disable camera sway during animation
             camera.userData.swayEnabled = false;
-
-            // Target position and look-at
-            const targetPosition = new THREE.Vector3(-25, 4, -35);
-            const targetLookAt = new THREE.Vector3(0, 3, 0);
 
             // Store original values
             const startPosition = camera.position.clone();
