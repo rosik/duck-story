@@ -183,18 +183,20 @@
 
         // Scene variables
         let scene, camera, renderer, clock;
-        let sky, ground, cloudSystem, duck;
+        let sky, ground, cloudSystem, duck, pond;
         let isInitialized = false;
         let isRunning = false;
 
         // Game state variables
         let clickedClouds = 0;
+        let splashCount = 0;
         let dialogueVisible = false;
         let dialogueBubbleElement;
         let cloudCounterElement;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let hoveredCloud = null;
+        let hoveredPond = false;
 
         // Initialize the scene
         async function init() {
@@ -392,9 +394,15 @@
             });
 
             // Create mesh for the pond
-            const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+            pond = new THREE.Mesh(pondGeometry, pondMaterial);
             pond.position.y = 0.05; // Slightly above the ground to prevent z-fighting
             pond.receiveShadow = true;
+            pond.name = 'pond';
+
+            // Store original material for hover effect
+            pond.userData.originalMaterial = pondMaterial.clone();
+            pond.userData.isClickable = false; // Initially not clickable
+
             groundGroup.add(pond);
 
             return groundGroup;
@@ -614,6 +622,9 @@
             // Check for cloud hover
             checkCloudHover();
 
+            // Check for pond hover
+            checkPondHover();
+
             // Update dialogue position
             updateDialoguePosition();
 
@@ -660,6 +671,39 @@
             }
         }
 
+        // Check for pond hover
+        function checkPondHover() {
+            // Only check if pond is clickable
+            if (!pond || !pond.userData.isClickable) {
+                return;
+            }
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the picking ray
+            const intersects = raycaster.intersectObject(pond, false);
+
+            // Reset hover state if not hovering
+            if (hoveredPond && intersects.length === 0) {
+                pond.material = pond.userData.originalMaterial.clone();
+                hoveredPond = false;
+                document.body.style.cursor = 'default';
+            }
+
+            // Set hover state if hovering
+            if (intersects.length > 0) {
+                hoveredPond = true;
+
+                // Apply hover effect (darker blue)
+                const hoverMaterial = pond.userData.originalMaterial.clone();
+                hoverMaterial.color = new THREE.Color(0x3A67B8); // Darker blue
+                pond.material = hoverMaterial;
+
+                document.body.style.cursor = 'pointer';
+            }
+        }
+
         // Setup event listeners
         function setupEventListeners() {
             // START button click
@@ -703,11 +747,46 @@
             // Update the picking ray with the camera and mouse position
             raycaster.setFromCamera(mouse, camera);
 
-            // Calculate objects intersecting the picking ray
-            const intersects = raycaster.intersectObjects(cloudSystem.children, false);
+            // Check for pond clicks first
+            if (pond && pond.userData.isClickable) {
+                const pondIntersects = raycaster.intersectObject(pond, false);
 
-            if (intersects.length > 0) {
-                const cloud = intersects[0].object;
+                if (pondIntersects.length > 0) {
+                    // Create splash effect
+                    createSplashEffect(pondIntersects[0].point);
+
+                    // Increment splash counter
+                    splashCount++;
+
+                    // Update dialogue text
+                    showDialogue(`Давай плескаться: ${splashCount} из 10`);
+
+                    // Make clouds darker with each splash
+                    darkenClouds(splashCount / 10);
+
+                    // Check if we've reached 10 splashes
+                    if (splashCount === 10) {
+                        // Show "Ой ой" message
+                        showDialogue("Ой ой");
+
+                        // Disable pond clicks
+                        pond.userData.isClickable = false;
+
+                        // Create and animate tornado
+                        setTimeout(() => {
+                            createTornadoAnimation();
+                        }, 1000);
+                    }
+
+                    return; // Skip cloud check if pond was clicked
+                }
+            }
+
+            // Check for cloud clicks
+            const cloudIntersects = raycaster.intersectObjects(cloudSystem.children, false);
+
+            if (cloudIntersects.length > 0) {
+                const cloud = cloudIntersects[0].object;
 
                 // Only process clickable clouds
                 if (cloud.userData.isClickable && cloud.visible) {
@@ -719,8 +798,13 @@
 
                     // Check if we've reached 10 clouds
                     if (clickedClouds === 10) {
-                        showDialogue("Теперь мне слишком жарко! Продолжение следует.");
+                        showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
                         cloudSystem.setClickable(false);
+
+                        // Make pond clickable for scene 2
+                        pond.userData.isClickable = true;
+
+                        // Move camera to better view the pond
                         const targetPosition = new THREE.Vector3(10, 4, -35);
                         const targetLookAt = new THREE.Vector3(0, 3, 0);
                         animateCameraTo(targetPosition, targetLookAt);
@@ -791,6 +875,114 @@
             renderer.setPixelRatio(window.devicePixelRatio);
         }
 
+        // Create splash effect
+        function createSplashEffect(position) {
+            // Create a group for the splash effect
+            const splashGroup = new THREE.Group();
+            splashGroup.position.copy(position);
+
+            // Create particles for the splash
+            const particleCount = 20;
+            const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const particleMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4A87E8,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            // Create particles with random velocities
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+
+                // Random initial position slightly above the pond
+                particle.position.set(
+                    (Math.random() - 0.5) * 0.5,
+                    0.1,
+                    (Math.random() - 0.5) * 0.5
+                );
+
+                // Random velocity
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                particle.userData.velocity = new THREE.Vector3(
+                    Math.cos(angle) * speed,
+                    2 + Math.random() * 3, // Upward velocity
+                    Math.sin(angle) * speed
+                );
+
+                // Random scale
+                const scale = 0.3 + Math.random() * 0.7;
+                particle.scale.set(scale, scale, scale);
+
+                splashGroup.add(particle);
+            }
+
+            // Add the splash group to the scene
+            scene.add(splashGroup);
+
+            // Animation duration
+            const duration = 1.0; // seconds
+            const startTime = performance.now();
+
+            // Animation function
+            function animateSplash() {
+                const currentTime = performance.now();
+                const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
+
+                if (elapsed < duration) {
+                    // Update each particle
+                    splashGroup.children.forEach(particle => {
+                        // Apply velocity
+                        particle.position.x += particle.userData.velocity.x * 0.016; // Assuming ~60fps
+                        particle.position.y += particle.userData.velocity.y * 0.016;
+                        particle.position.z += particle.userData.velocity.z * 0.016;
+
+                        // Apply gravity
+                        particle.userData.velocity.y -= 9.8 * 0.016;
+
+                        // Fade out
+                        if (particle.material.opacity > 0) {
+                            particle.material.opacity = 0.8 * (1 - elapsed / duration);
+                        }
+                    });
+
+                    requestAnimationFrame(animateSplash);
+                } else {
+                    // Remove splash group when animation is complete
+                    scene.remove(splashGroup);
+                    splashGroup.children.forEach(particle => {
+                        particle.geometry.dispose();
+                        particle.material.dispose();
+                    });
+                }
+            }
+
+            // Start animation
+            requestAnimationFrame(animateSplash);
+        }
+
+        // Darken clouds based on splash count
+        function darkenClouds(intensity) {
+            // Intensity should be between 0 and 1
+            intensity = Math.min(Math.max(intensity, 0), 1);
+
+            // Apply darkening to all clouds
+            cloudSystem.children.forEach(cloud => {
+                // Get original color and darken it
+                const originalColor = cloud.userData.originalMaterial.color.clone();
+                const darkenedColor = new THREE.Color(
+                    originalColor.r * (1 - intensity * 0.5),
+                    originalColor.g * (1 - intensity * 0.5),
+                    originalColor.b * (1 - intensity * 0.5)
+                );
+
+                // Apply darkened color if the cloud is not being hovered
+                if (cloud !== hoveredCloud) {
+                    cloud.material.color.copy(darkenedColor);
+                }
+            });
+        }
+
         // Animate camera to game position
         function animateCameraTo(targetPosition, targetLookAt) {
             // Disable camera sway during animation
@@ -837,6 +1029,187 @@
 
             // Start animation
             requestAnimationFrame(animateCamera);
+        }
+
+        // Create and animate tornado
+        function createTornadoAnimation() {
+            // Create tornado mesh
+            const tornado = createTornado();
+            scene.add(tornado);
+
+            // Set initial position off to the side
+            tornado.position.set(-50, 0, -50);
+
+            // Animation duration
+            const moveDuration = 2.0; // seconds
+            const startTime = performance.now();
+
+            // Animation function
+            function animateTornado() {
+                const currentTime = performance.now();
+                const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
+
+                if (elapsed < moveDuration) {
+                    // Move tornado towards duck
+                    const progress = elapsed / moveDuration;
+                    const easeProgress = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                    // Interpolate position
+                    tornado.position.x = -50 + easeProgress * 50; // From -50 to 0
+                    tornado.position.z = -50 + easeProgress * 50; // From -50 to 0
+
+                    // Rotate tornado
+                    tornado.rotation.y += 0.1;
+
+                    // Update tornado shader
+                    tornado.update(0.016); // Assuming ~60fps
+
+                    requestAnimationFrame(animateTornado);
+                } else {
+                    // Tornado has reached the duck, now make the duck fly away
+                    animateDuckFlyingAway(tornado);
+                }
+            }
+
+            // Start animation
+            requestAnimationFrame(animateTornado);
+        }
+
+        // Create tornado mesh with shader
+        function createTornado() {
+            // Create a cone geometry for the tornado
+            const geometry = new THREE.ConeGeometry(5, 20, 32, 1, true);
+
+            // Create shader material for tornado
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0.0 },
+                    color1: { value: new THREE.Color(0x666666) }, // Dark gray
+                    color2: { value: new THREE.Color(0x999999) }  // Light gray
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vPosition;
+
+                    void main() {
+                        vUv = uv;
+                        vPosition = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    uniform vec3 color1;
+                    uniform vec3 color2;
+                    varying vec2 vUv;
+                    varying vec3 vPosition;
+
+                    void main() {
+                        // Create swirling pattern
+                        float swirl = sin(vUv.y * 20.0 + time * 5.0) * 0.5 + 0.5;
+
+                        // Mix colors based on swirl pattern
+                        vec3 color = mix(color1, color2, swirl);
+
+                        // Add transparency gradient from bottom to top
+                        float alpha = mix(0.9, 0.3, vUv.y);
+
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+
+            // Create mesh
+            const tornado = new THREE.Mesh(geometry, material);
+
+            // Rotate to make it upside down
+            tornado.rotation.x = Math.PI;
+
+            // Add update function
+            tornado.update = function(deltaTime) {
+                this.material.uniforms.time.value += deltaTime;
+            };
+
+            return tornado;
+        }
+
+        // Animate duck flying away with camera
+        function animateDuckFlyingAway(tornado) {
+            // Animation duration
+            const flyDuration = 3.0; // seconds
+            const startTime = performance.now();
+
+            // Store original positions
+            const duckStartPos = duck.position.clone();
+            const cameraStartPos = camera.position.clone();
+            const cameraStartTarget = camera.userData.baseTarget.clone();
+
+            // Target positions (high in the air)
+            const duckTargetPos = new THREE.Vector3(0, 50, 0);
+            const cameraTargetPos = new THREE.Vector3(0, 45, -10);
+            const cameraTargetLookAt = new THREE.Vector3(0, 50, 0);
+
+            // Disable camera sway
+            camera.userData.swayEnabled = false;
+
+            // Animation function
+            function animateFlyAway() {
+                const currentTime = performance.now();
+                const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
+                const progress = Math.min(elapsed / flyDuration, 1);
+
+                // Cubic easing
+                const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                // Move duck upward
+                duck.position.lerpVectors(duckStartPos, duckTargetPos, ease);
+
+                // Move camera to follow duck
+                camera.position.lerpVectors(cameraStartPos, cameraTargetPos, ease);
+
+                // Update camera target
+                const currentTarget = new THREE.Vector3();
+                currentTarget.lerpVectors(cameraStartTarget, cameraTargetLookAt, ease);
+                camera.lookAt(currentTarget);
+
+                // Update camera base values
+                camera.userData.basePosition.copy(camera.position);
+                camera.userData.baseTarget.copy(currentTarget);
+
+                // Update tornado position to follow duck
+                if (tornado) {
+                    tornado.position.x = duck.position.x;
+                    tornado.position.z = duck.position.z;
+                    tornado.position.y = duck.position.y - 10; // Below the duck
+
+                    // Update tornado shader
+                    tornado.update(0.016); // Assuming ~60fps
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateFlyAway);
+                } else {
+                    // Animation complete
+                    console.log('Duck has flown away!');
+
+                    // Show completion message
+                    showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
+
+                    // Remove tornado after a delay
+                    setTimeout(() => {
+                        if (tornado && tornado.parent) {
+                            scene.remove(tornado);
+                            tornado.material.dispose();
+                            tornado.geometry.dispose();
+                        }
+                    }, 2000);
+                }
+            }
+
+            // Start animation
+            requestAnimationFrame(animateFlyAway);
         }
 
         // Initialize on page load
