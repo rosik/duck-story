@@ -985,111 +985,78 @@
 
         // Setup event listeners
         function setupEventListeners() {
-            // START button click
-            const startButton = document.getElementById('startButton');
-            startButton.addEventListener('click', () => {
-                // Hide the start button after clicking
-                startButton.style.display = 'none';
-                const targetPosition = new THREE.Vector3(-25, 4, -35);
-                const targetLookAt = new THREE.Vector3(0, 3, 0);
-                animateCameraTo(targetPosition, targetLookAt);
-
-                // Make clouds clickable after start button is clicked
-                cloudSystem.setClickable(true);
-
-                // Show dialogue after camera animation
-                setTimeout(() => {
-                    showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
-                }, 1000);
-            });
-
             // Window resize
             window.addEventListener('resize', onWindowResize);
 
             // Mouse move for hover effect
-            window.addEventListener('mousemove', (event) => {
-                // Calculate mouse position in normalized device coordinates
-                // (-1 to +1) for both components
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            window.addEventListener('mousemove', onMouseMove);
+
+            // Mouse click for interaction
+            window.addEventListener('click', onMouseClick);
+        }
+
+        // Handle mouse move for hover effects
+        function onMouseMove(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Only process if the game is running
+            if (!isRunning || !currentScene) return;
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Get clickable objects from current scene
+            const clickableObjects = currentScene.clickableObjects || [];
+
+            // Find intersections with clickable objects
+            const intersects = raycaster.intersectObjects(clickableObjects, false);
+
+            // Reset hover states for all objects
+            clickableObjects.forEach(obj => {
+                if (obj.userData.isHovered && typeof obj.userData.handleHover === 'function') {
+                    obj.userData.handleHover(false);
+                    obj.userData.isHovered = false;
+                }
             });
 
-            // Mouse click for cloud interaction
-            window.addEventListener('click', onMouseClick);
+            // Set hover state for intersected object
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData.isClickable && object.visible) {
+                    object.userData.isHovered = true;
+                    if (typeof object.userData.handleHover === 'function') {
+                        object.userData.handleHover(true);
+                    }
+                    document.body.style.cursor = 'pointer';
+                }
+            } else {
+                document.body.style.cursor = 'default';
+            }
         }
 
         // Handle mouse click
         function onMouseClick(event) {
             // Only process clicks if the game is running
-            if (!isRunning) return;
+            if (!isRunning || !currentScene) return;
 
             // Update the picking ray with the camera and mouse position
             raycaster.setFromCamera(mouse, camera);
 
-            // Check for pond clicks first
-            if (pond && pond.userData.isClickable) {
-                const pondIntersects = raycaster.intersectObject(pond, false);
+            // Get clickable objects from current scene
+            const clickableObjects = currentScene.clickableObjects || [];
 
-                if (pondIntersects.length > 0) {
-                    // Create splash effect
-                    createSplashEffect(pondIntersects[0].point);
+            // Find intersections with clickable objects
+            const intersects = raycaster.intersectObjects(clickableObjects, false);
 
-                    // Increment splash counter
-                    splashCount++;
-
-                    // Update dialogue text
-                    showDialogue(`Давай плескаться: ${splashCount} из 10`);
-
-                    // Make clouds darker with each splash
-                    darkenClouds(splashCount / 10);
-
-                    // Check if we've reached 10 splashes
-                    if (splashCount === 10) {
-                        // Show "Ой ой" message
-                        showDialogue("Ой ой");
-
-                        // Disable pond clicks
-                        pond.userData.isClickable = false;
-
-                        // Create and animate tornado
-                        setTimeout(() => {
-                            createTornadoAnimation();
-                        }, 1000);
-                    }
-
-                    return; // Skip cloud check if pond was clicked
-                }
-            }
-
-            // Check for cloud clicks
-            const cloudIntersects = raycaster.intersectObjects(cloudSystem.children, false);
-
-            if (cloudIntersects.length > 0) {
-                const cloud = cloudIntersects[0].object;
-
-                // Only process clickable clouds
-                if (cloud.userData.isClickable && cloud.visible) {
-                    // Make cloud disappear
-                    cloudSystem.remove(cloud);
-
-                    // Increment counter
-                    clickedClouds++;
-
-                    // Check if we've reached 10 clouds
-                    if (clickedClouds === 10) {
-                        showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
-                        cloudSystem.setClickable(false);
-
-                        // Make pond clickable for scene 2
-                        pond.userData.isClickable = true;
-
-                        // Move camera to better view the pond
-                        const targetPosition = new THREE.Vector3(10, 4, -35);
-                        const targetLookAt = new THREE.Vector3(0, 3, 0);
-                        animateCameraTo(targetPosition, targetLookAt);
-                    } else {
-                        // Update the dialogue bubble with the current count
-                        updateCloudCounter();
+            // Handle first intersection
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData.isClickable && object.visible) {
+                    // Call the object's click handler
+                    if (typeof object.userData.handleClick === 'function') {
+                        object.userData.handleClick(intersects[0]);
                     }
                 }
             }
