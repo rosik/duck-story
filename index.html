@@ -198,8 +198,9 @@
         let hoveredCloud = null;
         let hoveredPond = false;
 
-        // Initialize the scene
-        async function init() {
+        // Scene setup functions
+        // Setup the start scene (Scene 0)
+        async function SetupStartScene() {
             // Create scene
             scene = new THREE.Scene();
 
@@ -299,7 +300,60 @@
                 scene.add(duck);
             }
 
-            // Setup event listeners
+            // Setup start button event listener
+            const startButton = document.getElementById('startButton');
+            startButton.addEventListener('click', () => {
+                // Hide the start button after clicking
+                startButton.style.display = 'none';
+                const targetPosition = new THREE.Vector3(-25, 4, -35);
+                const targetLookAt = new THREE.Vector3(0, 3, 0);
+                animateCameraTo(targetPosition, targetLookAt);
+
+                // Transition to Scene 1
+                SetupScene1();
+            });
+        }
+
+        // Setup Scene 1 - The Calm Pond (clicking clouds)
+        function SetupScene1() {
+            // Make clouds clickable
+            cloudSystem.setClickable(true);
+
+            // Show dialogue after camera animation
+            setTimeout(() => {
+                showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
+            }, 1000);
+        }
+
+        // Setup Scene 2 - Splash in the water (clicking pond)
+        function SetupScene2() {
+            // Make clouds not clickable
+            cloudSystem.setClickable(false);
+
+            // Make pond clickable
+            pond.userData.isClickable = true;
+
+            // Show dialogue
+            showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
+
+            // Move camera to better view the pond
+            const targetPosition = new THREE.Vector3(10, 4, -35);
+            const targetLookAt = new THREE.Vector3(0, 3, 0);
+            animateCameraTo(targetPosition, targetLookAt);
+        }
+
+        // Setup Scene 3 - Up in the Clouds (placeholder for future implementation)
+        function SetupScene3() {
+            // Placeholder for future implementation
+            console.log("Scene 3 - Up in the Clouds - Not implemented yet");
+        }
+
+        // Initialize the scene
+        async function init() {
+            // Setup the start scene
+            await SetupStartScene();
+
+            // Setup remaining event listeners
             setupEventListeners();
 
             // Initialize dialogue system
@@ -1147,9 +1201,9 @@
             const cameraStartTarget = camera.userData.baseTarget.clone();
 
             // Target positions (high in the air)
-            const duckTargetPos = new THREE.Vector3(0, 50, 0);
-            const cameraTargetPos = new THREE.Vector3(0, 45, -10);
-            const cameraTargetLookAt = new THREE.Vector3(0, 50, 0);
+            const duckTargetPos = new THREE.Vector3(0, 30, 0);
+            const cameraTargetPos = new THREE.Vector3(-30, 35, -30);
+            const cameraTargetLookAt = new THREE.Vector3(0, 30, 0);
 
             // Disable camera sway
             camera.userData.swayEnabled = false;
