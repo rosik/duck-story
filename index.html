@@ -348,13 +348,80 @@
 
         // Setup Scene 1 - The Calm Pond (clicking clouds)
         function SetupScene1() {
-            // Make clouds clickable
-            cloudSystem.setClickable(true);
+            console.log("Setting up Scene 1 - The Calm Pond");
 
-            // Show dialogue after camera animation
-            setTimeout(() => {
-                showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
-            }, 1000);
+            // Initialize scene state
+            currentScene.state = {
+                clickedClouds: 0,
+                requiredClouds: 10,
+                isComplete: false
+            };
+
+            // Make clouds clickable and add handlers
+            cloudSystem.children.forEach(cloud => {
+                // Set up cloud as clickable
+                cloud.userData.isClickable = true;
+
+                // Add hover handler
+                cloud.userData.handleHover = (isHovering) => {
+                    if (isHovering) {
+                        // Apply hover effect
+                        const hoverMaterial = cloud.userData.originalMaterial.clone();
+                        hoverMaterial.emissive = new THREE.Color(0x333333);
+                        hoverMaterial.emissiveIntensity = 1.0;
+                        hoverMaterial.color = new THREE.Color(0xDDDDDD);
+                        cloud.material = hoverMaterial;
+                    } else {
+                        // Remove hover effect
+                        cloud.material = cloud.userData.originalMaterial.clone();
+                    }
+                };
+
+                // Add click handler
+                cloud.userData.handleClick = () => {
+                    // Remove cloud
+                    cloudSystem.remove(cloud);
+
+                    // Update scene state
+                    currentScene.state.clickedClouds++;
+
+                    // Update dialogue
+                    showDialogue(`Нажимай на облака: ${currentScene.state.clickedClouds} из ${currentScene.state.requiredClouds}`);
+
+                    // Check for scene completion
+                    if (currentScene.state.clickedClouds >= currentScene.state.requiredClouds) {
+                        currentScene.state.isComplete = true;
+
+                        // Show completion dialogue
+                        showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
+
+                        // Transition to Scene 2
+                        transitionToScene(2);
+                    }
+                };
+            });
+
+            // Register clickable objects
+            currentScene.clickableObjects = cloudSystem.children;
+
+            // Show initial dialogue
+            showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
+        }
+
+        // Cleanup for Scene 1
+        function FinishScene1() {
+            console.log("Cleaning up Scene 1");
+
+            // Make clouds not clickable
+            cloudSystem.children.forEach(cloud => {
+                cloud.userData.isClickable = false;
+            });
+
+            // Reset hover states
+            if (hoveredCloud) {
+                hoveredCloud.material = hoveredCloud.userData.originalMaterial.clone();
+                hoveredCloud = null;
+            }
         }
 
         // Setup Scene 2 - Splash in the water (clicking pond)
