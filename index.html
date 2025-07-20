@@ -512,8 +512,24 @@
 
         // Setup Scene 3 - Up in the Clouds (placeholder for future implementation)
         function SetupScene3() {
+            console.log("Setting up Scene 3 - Up in the Clouds");
+
+            // Initialize scene state
+            currentScene.state = {
+                isComplete: false
+            };
+
             // Placeholder for future implementation
-            console.log("Scene 3 - Up in the Clouds - Not implemented yet");
+            showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
+
+            // Clear clickable objects
+            currentScene.clickableObjects = [];
+        }
+
+        // Cleanup for Scene 3
+        function FinishScene3() {
+            console.log("Cleaning up Scene 3");
+            // Placeholder for future implementation
         }
 
         // Initialize the scene
@@ -1105,8 +1121,8 @@
         // Update cloud counter
         function updateCloudCounter() {
             // Update the dialogue bubble text instead of a separate counter
-            if (dialogueVisible) {
-                showDialogue(`Нажимай на облака: ${clickedClouds} из 10`);
+            if (dialogueVisible && currentScene && currentScene.state) {
+                showDialogue(`Нажимай на облака: ${currentScene.state.clickedClouds} из ${currentScene.state.requiredClouds}`);
             }
         }
 
@@ -1230,7 +1246,7 @@
         }
 
         // Animate camera to game position
-        function animateCameraTo(targetPosition, targetLookAt) {
+        function animateCameraTo(targetPosition, targetLookAt, onComplete) {
             // Disable camera sway during animation
             camera.userData.swayEnabled = false;
 
@@ -1270,6 +1286,11 @@
                     console.log('Camera animation complete');
                     // Re-enable camera sway if desired
                     // camera.userData.swayEnabled = true;
+
+                    // Call completion callback if provided
+                    if (typeof onComplete === 'function') {
+                        onComplete();
+                    }
                 }
             }
 
