@@ -187,9 +187,11 @@
         let isInitialized = false;
         let isRunning = false;
 
+        // Scene management
+        let currentScene = null;
+        const scenes = {};
+
         // Game state variables
-        let clickedClouds = 0;
-        let splashCount = 0;
         let dialogueVisible = false;
         let dialogueBubbleElement;
         let cloudCounterElement;
@@ -200,118 +202,148 @@
 
         // Scene setup functions
         // Setup the start scene (Scene 0)
-        async function SetupStartScene() {
-            // Create scene
-            scene = new THREE.Scene();
+        async function SetupScene0() {
+            console.log("Setting up Scene 0 - Start Scene");
 
-            // Create renderer
-            renderer = new THREE.WebGLRenderer({
-                canvas: document.getElementById('gameCanvas'),
-                antialias: true
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
+            // Initialize scene state
+            currentScene.state = {
+                isStarted: false
+            };
 
-            // Create camera
-            camera = createCamera();
+            // Create scene if not exists
+            if (!scene) {
+                // Create scene
+                scene = new THREE.Scene();
 
-            // Create clock for timing
-            clock = new THREE.Clock();
+                // Create renderer
+                renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('gameCanvas'),
+                    antialias: true
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.shadowMap.enabled = true;
 
-            // Create sky
-            sky = createSky();
-            scene.add(sky);
+                // Create camera
+                camera = createCamera();
 
-            // Create ground
-            ground = createGround();
-            scene.add(ground);
+                // Create clock for timing
+                clock = new THREE.Clock();
 
-            // Create cloud system
-            cloudSystem = createCloudSystem(50);
-            scene.add(cloudSystem);
+                // Create sky
+                sky = createSky();
+                scene.add(sky);
 
-            // Add ambient light
-            const ambientLight = new THREE.AmbientLight();
-            scene.add(ambientLight);
+                // Create ground
+                ground = createGround();
+                scene.add(ground);
 
-            // Add directional light (sun)
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(50, 200, 100);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 1024;
-            directionalLight.shadow.mapSize.height = 1024;
+                // Create cloud system
+                cloudSystem = createCloudSystem(50);
+                scene.add(cloudSystem);
 
-            // Configure shadow camera for better shadows
-            directionalLight.shadow.camera.near = 10;
-            directionalLight.shadow.camera.far = 500;
-            directionalLight.shadow.camera.left = -150;
-            directionalLight.shadow.camera.right = 150;
-            directionalLight.shadow.camera.top = 150;
-            directionalLight.shadow.camera.bottom = -150;
+                // Add ambient light
+                const ambientLight = new THREE.AmbientLight();
+                scene.add(ambientLight);
 
-            // Adjust shadow bias to prevent shadow acne
-            directionalLight.shadow.bias = -0.001;
+                // Add directional light (sun)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 200, 100);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 1024;
+                directionalLight.shadow.mapSize.height = 1024;
 
-            scene.add(directionalLight);
+                // Configure shadow camera for better shadows
+                directionalLight.shadow.camera.near = 10;
+                directionalLight.shadow.camera.far = 500;
+                directionalLight.shadow.camera.left = -150;
+                directionalLight.shadow.camera.right = 150;
+                directionalLight.shadow.camera.top = 150;
+                directionalLight.shadow.camera.bottom = -150;
 
-            // Load duck model
-            try {
-                // throw "Aaa"
-                duck = await loadDuckModel();
-                duck.scale.set(6, 6, 6);
-                duck.position.set(0, -1, 0);
-                scene.add(duck);
-                console.log('Duck model loaded successfully');
-            } catch (error) {
-                console.error('Failed to load duck model:', error);
+                // Adjust shadow bias to prevent shadow acne
+                directionalLight.shadow.bias = -0.001;
 
-                console.log('Creating fallback duck model');
+                scene.add(directionalLight);
 
-                // Create a more duck-like fallback using primitive shapes
-                const duckGroup = new THREE.Group();
+                // Load duck model
+                try {
+                    duck = await loadDuckModel();
+                    duck.scale.set(6, 6, 6);
+                    duck.position.set(0, -1, 0);
+                    scene.add(duck);
+                    console.log('Duck model loaded successfully');
+                } catch (error) {
+                    console.error('Failed to load duck model:', error);
 
-                // Duck body (yellow sphere)
-                const bodyGeometry = new THREE.SphereGeometry(2, 32, 32);
-                const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                body.position.set(0, 3, 0);
-                body.castShadow = true;
-                duckGroup.add(body);
+                    console.log('Creating fallback duck model');
 
-                // Duck head (smaller yellow sphere)
-                const headGeometry = new THREE.SphereGeometry(1, 24, 24);
-                const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-                const head = new THREE.Mesh(headGeometry, headMaterial);
-                head.position.set(0, 4.5, 1.5);
-                head.castShadow = true;
-                duckGroup.add(head);
+                    // Create a more duck-like fallback using primitive shapes
+                    const duckGroup = new THREE.Group();
 
-                // Duck beak (orange cone)
-                const beakGeometry = new THREE.ConeGeometry(0.5, 1.5, 8);
-                beakGeometry.rotateX(Math.PI / 2);
-                const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xFF9900 });
-                const beak = new THREE.Mesh(beakGeometry, beakMaterial);
-                beak.position.set(0, 4.5, 3);
-                beak.castShadow = true;
-                duckGroup.add(beak);
+                    // Duck body (yellow sphere)
+                    const bodyGeometry = new THREE.SphereGeometry(2, 32, 32);
+                    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                    body.position.set(0, 3, 0);
+                    body.castShadow = true;
+                    duckGroup.add(body);
 
-                duck = duckGroup;
-                scene.add(duck);
+                    // Duck head (smaller yellow sphere)
+                    const headGeometry = new THREE.SphereGeometry(1, 24, 24);
+                    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                    const head = new THREE.Mesh(headGeometry, headMaterial);
+                    head.position.set(0, 4.5, 1.5);
+                    head.castShadow = true;
+                    duckGroup.add(head);
+
+                    // Duck beak (orange cone)
+                    const beakGeometry = new THREE.ConeGeometry(0.5, 1.5, 8);
+                    beakGeometry.rotateX(Math.PI / 2);
+                    const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xFF9900 });
+                    const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+                    beak.position.set(0, 4.5, 3);
+                    beak.castShadow = true;
+                    duckGroup.add(beak);
+
+                    duck = duckGroup;
+                    scene.add(duck);
+                }
             }
 
-            // Setup start button event listener
+            // Setup start button
             const startButton = document.getElementById('startButton');
-            startButton.addEventListener('click', () => {
+            startButton.style.display = 'block';
+
+            // Setup start button click handler
+            startButton.onclick = () => {
                 // Hide the start button after clicking
                 startButton.style.display = 'none';
+
+                // Update scene state
+                currentScene.state.isStarted = true;
+
+                // Animate camera to scene 1 position
                 const targetPosition = new THREE.Vector3(-25, 4, -35);
                 const targetLookAt = new THREE.Vector3(0, 3, 0);
-                animateCameraTo(targetPosition, targetLookAt);
 
-                // Transition to Scene 1
-                SetupScene1();
-            });
+                animateCameraTo(targetPosition, targetLookAt, () => {
+                    // Transition to Scene 1 after camera animation
+                    transitionToScene(1);
+                });
+            };
+
+            // Clear clickable objects array
+            currentScene.clickableObjects = [];
+        }
+
+        // Cleanup for Scene 0
+        function FinishScene0() {
+            console.log("Cleaning up Scene 0");
+
+            // Remove start button click handler
+            const startButton = document.getElementById('startButton');
+            startButton.onclick = null;
         }
 
         // Setup Scene 1 - The Calm Pond (clicking clouds)
@@ -350,14 +382,17 @@
 
         // Initialize the scene
         async function init() {
-            // Setup the start scene
-            await SetupStartScene();
-
-            // Setup remaining event listeners
-            setupEventListeners();
-
             // Initialize dialogue system
             initDialogueSystem();
+
+            // Initialize scene manager
+            initSceneManager();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Start with Scene 0
+            await transitionToScene(0);
 
             // Hide loading screen
             document.getElementById('loadingScreen').style.display = 'none';
@@ -366,6 +401,60 @@
             isInitialized = true;
             isRunning = true;
             animate();
+        }
+
+        // Initialize scene manager
+        function initSceneManager() {
+            // Register scenes
+            scenes[0] = {
+                id: 0,
+                name: "Start Scene",
+                setup: SetupScene0,
+                cleanup: FinishScene0,
+                clickableObjects: []
+            };
+
+            scenes[1] = {
+                id: 1,
+                name: "The Calm Pond",
+                setup: SetupScene1,
+                cleanup: FinishScene1,
+                clickableObjects: []
+            };
+
+            scenes[2] = {
+                id: 2,
+                name: "Splash in the Water",
+                setup: SetupScene2,
+                cleanup: FinishScene2,
+                clickableObjects: []
+            };
+
+            scenes[3] = {
+                id: 3,
+                name: "Up in the Clouds",
+                setup: SetupScene3,
+                cleanup: FinishScene3,
+                clickableObjects: []
+            };
+        }
+
+        // Scene transition function
+        async function transitionToScene(sceneId) {
+            console.log(`Transitioning to scene ${sceneId}`);
+
+            // Clean up current scene if exists
+            if (currentScene && currentScene.cleanup) {
+                currentScene.cleanup();
+            }
+
+            // Set new current scene
+            currentScene = scenes[sceneId];
+
+            // Setup new scene
+            if (currentScene && currentScene.setup) {
+                await currentScene.setup();
+            }
         }
 
         // Create sky with gradient
