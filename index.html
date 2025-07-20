@@ -426,19 +426,88 @@
 
         // Setup Scene 2 - Splash in the water (clicking pond)
         function SetupScene2() {
-            // Make clouds not clickable
-            cloudSystem.setClickable(false);
+            console.log("Setting up Scene 2 - Splash in the Water");
+
+            // Initialize scene state
+            currentScene.state = {
+                splashCount: 0,
+                requiredSplashes: 10,
+                isComplete: false
+            };
 
             // Make pond clickable
             pond.userData.isClickable = true;
 
-            // Show dialogue
-            showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
+            // Add hover handler
+            pond.userData.handleHover = (isHovering) => {
+                if (isHovering) {
+                    // Apply hover effect
+                    const hoverMaterial = pond.userData.originalMaterial.clone();
+                    hoverMaterial.color = new THREE.Color(0x3A67B8); // Darker blue
+                    pond.material = hoverMaterial;
+                    hoveredPond = true;
+                } else {
+                    // Remove hover effect
+                    pond.material = pond.userData.originalMaterial.clone();
+                    hoveredPond = false;
+                }
+            };
+
+            // Add click handler
+            pond.userData.handleClick = (intersection) => {
+                // Create splash effect
+                createSplashEffect(intersection.point);
+
+                // Update scene state
+                currentScene.state.splashCount++;
+
+                // Update dialogue
+                showDialogue(`Давай плескаться: ${currentScene.state.splashCount} из ${currentScene.state.requiredSplashes}`);
+
+                // Make clouds darker with each splash
+                darkenClouds(currentScene.state.splashCount / currentScene.state.requiredSplashes);
+
+                // Check for scene completion
+                if (currentScene.state.splashCount >= currentScene.state.requiredSplashes) {
+                    currentScene.state.isComplete = true;
+
+                    // Show completion dialogue
+                    showDialogue("Ой ой");
+
+                    // Disable pond clicks
+                    pond.userData.isClickable = false;
+
+                    // Create and animate tornado
+                    setTimeout(() => {
+                        createTornadoAnimation();
+                    }, 1000);
+                }
+            };
+
+            // Register clickable objects
+            currentScene.clickableObjects = [pond];
 
             // Move camera to better view the pond
             const targetPosition = new THREE.Vector3(10, 4, -35);
             const targetLookAt = new THREE.Vector3(0, 3, 0);
             animateCameraTo(targetPosition, targetLookAt);
+
+            // Show initial dialogue
+            showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
+        }
+
+        // Cleanup for Scene 2
+        function FinishScene2() {
+            console.log("Cleaning up Scene 2");
+
+            // Make pond not clickable
+            pond.userData.isClickable = false;
+
+            // Reset hover state
+            if (hoveredPond) {
+                pond.material = pond.userData.originalMaterial.clone();
+                hoveredPond = false;
+            }
         }
 
         // Setup Scene 3 - Up in the Clouds (placeholder for future implementation)
