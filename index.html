@@ -560,17 +560,6 @@
                 // Check for scene completion
                 if (currentScene.state.splashCount >= currentScene.state.requiredSplashes) {
                     currentScene.state.isComplete = true;
-
-                    // Show completion dialogue
-                    showDialogue("Ой ой");
-
-                    // Disable pond clicks
-                    pond.userData.isClickable = false;
-
-                    // Create and animate tornado
-                    setTimeout(() => {
-                        createTornadoAnimation();
-                    }, 1000);
                 }
             };
 
@@ -597,6 +586,7 @@
 
             // Make pond not clickable
             pond.userData.isClickable = false;
+            currentScene.clickableObjects = [];
 
             // Reset hover state
             if (hoveredPond) {
@@ -617,11 +607,16 @@
                 isComplete: false
             };
 
+            // Show completion dialogue
+            showDialogue("Ой ой");
+
+            // Create and animate tornado
+            createTornadoAnimation();
+
             // Placeholder for future implementation
             showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
 
             // Clear clickable objects
-            currentScene.clickableObjects = [];
 
             // Debug mode auto-progression
             if (isDebugMode) {
@@ -1411,7 +1406,7 @@
             scene.add(tornado);
 
             // Set initial position off to the side
-            tornado.position.set(-50, 0, -50);
+            tornado.position.set(-50, 0, 50);
 
             // Animation duration
             const moveDuration = 2.0; // seconds
@@ -1429,7 +1424,7 @@
 
                     // Interpolate position
                     tornado.position.x = -50 + easeProgress * 50; // From -50 to 0
-                    tornado.position.z = -50 + easeProgress * 50; // From -50 to 0
+                    tornado.position.z = 50 - easeProgress * 50; // From -50 to 0
 
                     // Rotate tornado
                     tornado.rotation.y += 0.1;
