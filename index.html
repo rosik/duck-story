@@ -56,6 +56,12 @@
             transform: translateX(-50%);
         }
 
+        #debugButton {
+            bottom: 50px;
+            left: calc(50% + 120px);
+            transform: translateX(-50%);
+        }
+
         /* Dialogue bubble styles */
         #dialogueBubble {
             pointer-events: none;
@@ -158,6 +164,7 @@
 
     <div id="ui-overlay">
         <button id="startButton" class="ui-button">ИГРАТЬ</button>
+        <button id="debugButton" class="ui-button" style="display: none;">ДЕБАЖИТЬ</button>
         <div id="dialogueBubble"></div>
         <div id="cloudCounter">Облака: 0/10</div>
     </div>
@@ -199,6 +206,8 @@
         let mouse = new THREE.Vector2();
         let hoveredCloud = null;
         let hoveredPond = false;
+        let isDebugMode = false;
+        let debugTimeouts = [];
 
         // Scene setup functions
         // Setup the start scene (Scene 0)
@@ -315,10 +324,15 @@
             const startButton = document.getElementById('startButton');
             startButton.style.display = 'block';
 
+            // Setup debug button
+            const debugButton = document.getElementById('debugButton');
+            debugButton.style.display = 'block';
+
             // Setup start button click handler
             startButton.onclick = () => {
                 // Hide the start button after clicking
                 startButton.style.display = 'none';
+                debugButton.style.display = 'none';
 
                 // Update scene state
                 currentScene.state.isStarted = true;
@@ -333,6 +347,22 @@
                 });
             };
 
+            // Setup debug button click handler
+            debugButton.onclick = () => {
+                // Hide both buttons after clicking
+                startButton.style.display = 'none';
+                debugButton.style.display = 'none';
+
+                // Enable debug mode
+                isDebugMode = true;
+
+                // Update scene state
+                currentScene.state.isStarted = true;
+
+                // Start debug sequence
+                startDebugSequence();
+            };
+
             // Clear clickable objects array
             currentScene.clickableObjects = [];
         }
@@ -344,6 +374,58 @@
             // Remove start button click handler
             const startButton = document.getElementById('startButton');
             startButton.onclick = null;
+
+            // Remove debug button click handler
+            const debugButton = document.getElementById('debugButton');
+            debugButton.onclick = null;
+
+            // Clear debug timeouts
+            clearDebugTimeouts();
+        }
+
+        // Start debug sequence
+        function startDebugSequence() {
+            console.log("Starting debug sequence");
+
+            // Clear any existing debug timeouts
+            debugTimeouts.forEach(timeout => clearTimeout(timeout));
+            debugTimeouts = [];
+
+            // Animate camera to scene 1 position
+            const targetPosition = new THREE.Vector3(-25, 4, -35);
+            const targetLookAt = new THREE.Vector3(0, 3, 0);
+
+            animateCameraTo(targetPosition, targetLookAt, () => {
+                // Transition to Scene 1 after camera animation
+                transitionToScene(1);
+            });
+        }
+
+        // Debug scene progression
+        function debugProgressScene(sceneId) {
+            console.log(`Debug progressing from scene ${sceneId}`);
+
+            // Universal auto-completion for all scenes
+            debugTimeouts.push(setTimeout(() => {
+                if (currentScene && currentScene.state) {
+                    currentScene.state.isComplete = true;
+
+                    // Auto-progress to next scene
+                    const nextSceneId = sceneId + 1;
+                    if (scenes[nextSceneId]) {
+                        transitionToScene(nextSceneId);
+                    } else {
+                        console.log("Debug sequence complete");
+                        isDebugMode = false;
+                    }
+                }
+            }, 2000));
+        }
+
+        // Clear debug timeouts
+        function clearDebugTimeouts() {
+            debugTimeouts.forEach(timeout => clearTimeout(timeout));
+            debugTimeouts = [];
         }
 
         // Setup Scene 1 - The Calm Pond (clicking clouds)
@@ -406,6 +488,11 @@
 
             // Show initial dialogue
             showDialogue("Привет! Как по мне, погода сегодня слишком облачная. Нажимай на облака чтобы они исчезли.");
+
+            // Debug mode auto-progression
+            if (isDebugMode) {
+                debugProgressScene(1);
+            }
         }
 
         // Cleanup for Scene 1
@@ -422,6 +509,9 @@
                 hoveredCloud.material = hoveredCloud.userData.originalMaterial.clone();
                 hoveredCloud = null;
             }
+
+            // Clear debug timeouts
+            clearDebugTimeouts();
         }
 
         // Setup Scene 2 - Splash in the water (clicking pond)
@@ -494,6 +584,11 @@
 
             // Show initial dialogue
             showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
+
+            // Debug mode auto-progression
+            if (isDebugMode) {
+                debugProgressScene(2);
+            }
         }
 
         // Cleanup for Scene 2
@@ -508,6 +603,9 @@
                 pond.material = pond.userData.originalMaterial.clone();
                 hoveredPond = false;
             }
+
+            // Clear debug timeouts
+            clearDebugTimeouts();
         }
 
         // Setup Scene 3 - Up in the Clouds (placeholder for future implementation)
@@ -524,12 +622,20 @@
 
             // Clear clickable objects
             currentScene.clickableObjects = [];
+
+            // Debug mode auto-progression
+            if (isDebugMode) {
+                debugProgressScene(3);
+            }
         }
 
         // Cleanup for Scene 3
         function FinishScene3() {
             console.log("Cleaning up Scene 3");
             // Placeholder for future implementation
+
+            // Clear debug timeouts
+            clearDebugTimeouts();
         }
 
         // Initialize the scene
