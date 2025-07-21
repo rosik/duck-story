@@ -611,7 +611,9 @@
             showDialogue("Ой ой");
 
             // Create and animate tornado
-            createTornadoAnimation();
+            createTornadoAnimation((tornado) => {
+                animateDuckFlyingAway(tornado);
+            });
 
             // Placeholder for future implementation
             showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
@@ -1400,46 +1402,36 @@
         }
 
         // Create and animate tornado
-        function createTornadoAnimation() {
-            // Create tornado mesh
+        function createTornadoAnimation(completionHandler) {
             const tornado = createTornado();
             scene.add(tornado);
 
-            // Set initial position off to the side
-            tornado.position.set(-50, 0, 50);
+            const config = {
+                startPos: new THREE.Vector3(-50, 0, 50),
+                endPos: new THREE.Vector3(0, 0, 0),
+                duration: 2.0
+            };
 
-            // Animation duration
-            const moveDuration = 2.0; // seconds
+            tornado.position.copy(config.startPos);
+
             const startTime = performance.now();
 
-            // Animation function
             function animateTornado() {
-                const currentTime = performance.now();
-                const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
+                const elapsed = (performance.now() - startTime) / 1000;
+                const progress = Math.min(elapsed / config.duration, 1);
+                const ease = progress < 0.5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
 
-                if (elapsed < moveDuration) {
-                    // Move tornado towards duck
-                    const progress = elapsed / moveDuration;
-                    const easeProgress = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                tornado.position.lerpVectors(config.startPos, config.endPos, ease);
+                tornado.rotation.y += 0.1;
+                tornado.update(0.016);
 
-                    // Interpolate position
-                    tornado.position.x = -50 + easeProgress * 50; // From -50 to 0
-                    tornado.position.z = 50 - easeProgress * 50; // From -50 to 0
-
-                    // Rotate tornado
-                    tornado.rotation.y += 0.1;
-
-                    // Update tornado shader
-                    tornado.update(0.016); // Assuming ~60fps
-
+                if (progress < 1) {
                     requestAnimationFrame(animateTornado);
                 } else {
-                    // Tornado has reached the duck, now make the duck fly away
-                    animateDuckFlyingAway(tornado);
+                    if (completionHandler) completionHandler(tornado);
                 }
             }
 
-            // Start animation
             requestAnimationFrame(animateTornado);
         }
 
@@ -1505,69 +1497,47 @@
 
         // Animate duck flying away with camera
         function animateDuckFlyingAway(tornado) {
-            // Animation duration
-            const flyDuration = 3.0; // seconds
+            const config = {
+                duration: 3.0,
+                duckStart: duck.position.clone(),
+                duckEnd: new THREE.Vector3(0, 30, 0),
+                cameraStart: camera.position.clone(),
+                cameraEnd: new THREE.Vector3(-30, 35, -30),
+                targetStart: camera.userData.baseTarget.clone(),
+                targetEnd: new THREE.Vector3(0, 30, 0)
+            };
+
+            camera.userData.swayEnabled = false;
             const startTime = performance.now();
 
-            // Store original positions
-            const duckStartPos = duck.position.clone();
-            const cameraStartPos = camera.position.clone();
-            const cameraStartTarget = camera.userData.baseTarget.clone();
-
-            // Target positions (high in the air)
-            const duckTargetPos = new THREE.Vector3(0, 30, 0);
-            const cameraTargetPos = new THREE.Vector3(-30, 35, -30);
-            const cameraTargetLookAt = new THREE.Vector3(0, 30, 0);
-
-            // Disable camera sway
-            camera.userData.swayEnabled = false;
-
-            // Animation function
             function animateFlyAway() {
-                const currentTime = performance.now();
-                const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
-                const progress = Math.min(elapsed / flyDuration, 1);
+                const elapsed = (performance.now() - startTime) / 1000;
+                const progress = Math.min(elapsed / config.duration, 1);
+                const ease = progress < 0.5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
 
-                // Cubic easing
-                const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                duck.position.lerpVectors(config.duckStart, config.duckEnd, ease);
+                camera.position.lerpVectors(config.cameraStart, config.cameraEnd, ease);
 
-                // Move duck upward
-                duck.position.lerpVectors(duckStartPos, duckTargetPos, ease);
-
-                // Move camera to follow duck
-                camera.position.lerpVectors(cameraStartPos, cameraTargetPos, ease);
-
-                // Update camera target
                 const currentTarget = new THREE.Vector3();
-                currentTarget.lerpVectors(cameraStartTarget, cameraTargetLookAt, ease);
+                currentTarget.lerpVectors(config.targetStart, config.targetEnd, ease);
                 camera.lookAt(currentTarget);
 
-                // Update camera base values
                 camera.userData.basePosition.copy(camera.position);
                 camera.userData.baseTarget.copy(currentTarget);
 
-                // Update tornado position to follow duck
                 if (tornado) {
-                    tornado.position.x = duck.position.x;
-                    tornado.position.z = duck.position.z;
-                    tornado.position.y = duck.position.y - 10; // Below the duck
-
-                    // Update tornado shader
-                    tornado.update(0.016); // Assuming ~60fps
+                    tornado.position.set(duck.position.x, duck.position.y - 10, duck.position.z);
+                    tornado.update(0.016);
                 }
 
                 if (progress < 1) {
                     requestAnimationFrame(animateFlyAway);
                 } else {
-                    // Animation complete
                     console.log('Duck has flown away!');
-
-                    // Show completion message
                     showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
 
-                    // Remove tornado after a delay
                     setTimeout(() => {
-                        if (tornado && tornado.parent) {
+                        if (tornado?.parent) {
                             scene.remove(tornado);
                             tornado.material.dispose();
                             tornado.geometry.dispose();
@@ -1576,7 +1546,6 @@
                 }
             }
 
-            // Start animation
             requestAnimationFrame(animateFlyAway);
         }
 
