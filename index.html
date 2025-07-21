@@ -615,11 +615,6 @@
                 animateDuckFlyingAway(tornado);
             });
 
-            // Placeholder for future implementation
-            showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
-
-            // Clear clickable objects
-
             // Debug mode auto-progression
             if (isDebugMode) {
                 debugProgressScene(3);
@@ -1207,9 +1202,12 @@
         function updateDialoguePosition() {
             if (!dialogueVisible || !duck) return;
 
-            // Get duck position in screen space
-            const duckPosition = new THREE.Vector3(0, 6.5, 0); // Approximate position above duck
-            const screenPosition = duckPosition.clone();
+            // Get actual duck position and add offset for dialogue bubble
+            const duckWorldPosition = new THREE.Vector3();
+            duck.getWorldPosition(duckWorldPosition);
+            duckWorldPosition.y += 6.5; // Offset above duck
+
+            const screenPosition = duckWorldPosition.clone();
             screenPosition.project(camera);
 
             // Convert to CSS coordinates
@@ -1534,7 +1532,7 @@
                     requestAnimationFrame(animateFlyAway);
                 } else {
                     console.log('Duck has flown away!');
-                    showDialogue("Ой! Меня унесло ветром! Продолжение следует...");
+                    showDialogue("Меня унесло ветром! Продолжение следует...");
 
                     setTimeout(() => {
                         if (tornado?.parent) {
