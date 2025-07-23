@@ -326,7 +326,7 @@
 
             // Setup debug button
             const debugButton = document.getElementById('debugButton');
-            debugButton.style.display = 'block';
+            debugButton.style.display = 'none';
 
             // Setup start button click handler
             startButton.onclick = () => {
@@ -419,7 +419,7 @@
                         isDebugMode = false;
                     }
                 }
-            }, 2000));
+            }, 1000));
         }
 
         // Clear debug timeouts
@@ -473,11 +473,6 @@
                     // Check for scene completion
                     if (currentScene.state.clickedClouds >= currentScene.state.requiredClouds) {
                         currentScene.state.isComplete = true;
-
-                        // Show completion dialogue
-                        showDialogue("Теперь мне слишком жарко! Давай плескаться! Нажимай на пруд чтобы летели брызги.");
-
-                        // Transition to Scene 2
                         transitionToScene(2);
                     }
                 };
@@ -560,6 +555,7 @@
                 // Check for scene completion
                 if (currentScene.state.splashCount >= currentScene.state.requiredSplashes) {
                     currentScene.state.isComplete = true;
+                    transitionToScene(3);
                 }
             };
 
@@ -1405,8 +1401,8 @@
             scene.add(tornado);
 
             const config = {
-                startPos: new THREE.Vector3(-50, 0, 50),
-                endPos: new THREE.Vector3(0, 0, 0),
+                startPos: new THREE.Vector3(-50, 10, 50),
+                endPos: new THREE.Vector3(0, 10, 0),
                 duration: 2.0
             };
 
@@ -1435,8 +1431,7 @@
 
         // Create tornado mesh with shader
         function createTornado() {
-            // Create a cone geometry for the tornado
-            const geometry = new THREE.ConeGeometry(5, 20, 32, 1, true);
+            const geometry = new THREE.ConeGeometry(8, 50, 32, 2, true);
 
             // Create shader material for tornado
             const material = new THREE.ShaderMaterial({
@@ -1485,6 +1480,9 @@
             // Rotate to make it upside down
             tornado.rotation.x = Math.PI;
 
+            // Position the tornado at ground level, reaching up to y=35
+            tornado.position.set(0, 10, 0);
+
             // Add update function
             tornado.update = function(deltaTime) {
                 this.material.uniforms.time.value += deltaTime;
@@ -1498,9 +1496,9 @@
             const config = {
                 duration: 3.0,
                 duckStart: duck.position.clone(),
-                duckEnd: new THREE.Vector3(0, 30, 0),
+                duckEnd: new THREE.Vector3(0, 35, 0),
                 cameraStart: camera.position.clone(),
-                cameraEnd: new THREE.Vector3(-30, 35, -30),
+                cameraEnd: new THREE.Vector3(-30, 40, -30),
                 targetStart: camera.userData.baseTarget.clone(),
                 targetEnd: new THREE.Vector3(0, 30, 0)
             };
@@ -1523,24 +1521,15 @@
                 camera.userData.basePosition.copy(camera.position);
                 camera.userData.baseTarget.copy(currentTarget);
 
+                // Tornado stays stationary at its original position
                 if (tornado) {
-                    tornado.position.set(duck.position.x, duck.position.y - 10, duck.position.z);
                     tornado.update(0.016);
                 }
 
                 if (progress < 1) {
                     requestAnimationFrame(animateFlyAway);
                 } else {
-                    console.log('Duck has flown away!');
-                    showDialogue("Меня унесло ветром! Продолжение следует...");
-
-                    setTimeout(() => {
-                        if (tornado?.parent) {
-                            scene.remove(tornado);
-                            tornado.material.dispose();
-                            tornado.geometry.dispose();
-                        }
-                    }, 2000);
+                    showDialogue("Меня унесло ветром! Верни меня обратно!}");
                 }
             }
 
